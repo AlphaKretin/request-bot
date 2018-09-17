@@ -1,0 +1,18 @@
+{
+    "169299769695535105": {
+        "history": [
+            {
+                "content": "test",
+                "date": "2018-09-16T09:03:09.123Z",
+                "userSent": true
+            },
+            {
+                "content": "But I can still make regular requests, right?",
+                "date": "2018-09-16T09:27:41.464Z",
+                "userSent": true
+            }
+        ],
+        "isCase": true,
+        "userID": "169299769695535105"
+    }
+}
