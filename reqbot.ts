@@ -69,9 +69,13 @@ bot.on("messageCreate", async msg => {
                     "!\n" +
                     detailRequest(entry);
                 for (const channelID of reviewChannels) {
-                    const sentMsg = await bot.createMessage(channelID, revOut);
-                    if (entry.attachment !== undefined) {
-                        sentMsg.pin();
+                    try {
+                        const sentMsg = await bot.createMessage(channelID, revOut);
+                        if (entry.attachment !== undefined) {
+                            sentMsg.pin();
+                        }
+                    } catch (e) {
+                        console.dir(e);
                     }
                 }
             }
