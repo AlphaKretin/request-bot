@@ -20,7 +20,7 @@ const cases: {
 });
 const reviewChannels: string[] = JSON.parse(fs.readFileSync("./data/channels.json", "utf8"));
 const commands: Command[] = [];
-const reactionButtons: ReactionButton[] = [];
+let reactionButtons: ReactionButton[] = [];
 const reactionTimeouts: {
     [messageID: string]: NodeJS.Timer;
 } = {};
@@ -31,8 +31,8 @@ async function addReactionButton(msg: Eris.Message, emoji: string, func: Reactio
         const button = new ReactionButton(msg, emoji, func);
         reactionButtons.push(button);
         if (!(msg.id in reactionTimeouts)) {
-            const time = setTimeout(() => {
-                removeButtons(msg);
+            const time = setTimeout(async () => {
+                await removeButtons(msg);
                 delete reactionTimeouts[msg.id];
             }, 1000 * 60);
             reactionTimeouts[msg.id] = time;
@@ -156,18 +156,13 @@ bot.on("messageReactionAdd", async (msg: Eris.PossiblyUncachedMessage, emoji: Er
 
 async function removeButtons(msg: Eris.Message): Promise<void> {
     await msg.removeReactions();
-    let check = true;
-    while (check) {
-        check = false;
-        for (let i = 0; i < reactionButtons.length; i++) {
-            const button = reactionButtons[i];
-            if (button.id === msg.id) {
-                check = true;
-                reactionButtons.splice(i);
-                break;
-            }
+    const stack = [];
+    for (const button of reactionButtons) {
+        if (button.id !== msg.id) {
+            stack.push(button);
         }
     }
+    reactionButtons = stack;
 }
 
 function getUser(query: string): Eris.User | undefined {
