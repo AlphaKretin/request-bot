@@ -349,20 +349,20 @@ async function addHistoryButtons(msg) {
                 return generateHistoryPage(historyPages[msg.channel.id]);
             }
         });
-        for (let i = 1; i < 10; i++) {
-            if (page.index + i - 1 < page.hist.length) {
-                await addReactionButton(msg, `${i}\u20e3`, async (ms) => {
-                    addHistoryButtons(ms);
-                    return detailHistoryEntry(historyPages[msg.channel.id], i - 1);
-                });
-            }
-        }
-        if (page.index + 9 < page.hist.length) {
-            await addReactionButton(msg, "🔟", async (ms, uID) => {
+    }
+    for (let i = 1; i < 10; i++) {
+        if (page.index + i - 1 < page.hist.length) {
+            await addReactionButton(msg, `${i}\u20e3`, async (ms) => {
                 addHistoryButtons(ms);
-                return detailHistoryEntry(historyPages[msg.channel.id], 9);
+                return detailHistoryEntry(historyPages[msg.channel.id], i - 1);
             });
         }
+    }
+    if (page.index + 9 < page.hist.length) {
+        await addReactionButton(msg, "🔟", async (ms, uID) => {
+            addHistoryButtons(ms);
+            return detailHistoryEntry(historyPages[msg.channel.id], 9);
+        });
     }
 }
 registerCommand(["hist", "history", "viewcase"], async (msg, args) => {
