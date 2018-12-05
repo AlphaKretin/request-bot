@@ -21,12 +21,22 @@ const cases: {
 const reviewChannels: string[] = JSON.parse(fs.readFileSync("./data/channels.json", "utf8"));
 const commands: Command[] = [];
 const reactionButtons: ReactionButton[] = [];
+const reactionTimeouts: {
+    [messageID: string]: NodeJS.Timer;
+} = {};
 
 async function addReactionButton(msg: Eris.Message, emoji: string, func: ReactionFunc) {
     try {
         await msg.addReaction(emoji);
         const button = new ReactionButton(msg, emoji, func);
         reactionButtons.push(button);
+        if (!(msg.id in reactionTimeouts)) {
+            const time = setTimeout(() => {
+                removeButtons(msg);
+                delete reactionTimeouts[msg.id];
+            }, 1000 * 60);
+            reactionTimeouts[msg.id] = time;
+        }
     } catch (e) {
         console.error(e);
     }

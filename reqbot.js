@@ -22,11 +22,19 @@ const cases = JSON.parse(fs.readFileSync("./data/cases.json", "utf8"), (key, val
 const reviewChannels = JSON.parse(fs.readFileSync("./data/channels.json", "utf8"));
 const commands = [];
 const reactionButtons = [];
+const reactionTimeouts = {};
 async function addReactionButton(msg, emoji, func) {
     try {
         await msg.addReaction(emoji);
         const button = new ReactionButton_1.ReactionButton(msg, emoji, func);
         reactionButtons.push(button);
+        if (!(msg.id in reactionTimeouts)) {
+            const time = setTimeout(() => {
+                removeButtons(msg);
+                delete reactionTimeouts[msg.id];
+            }, 1000 * 60);
+            reactionTimeouts[msg.id] = time;
+        }
     }
     catch (e) {
         console.error(e);
