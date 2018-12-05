@@ -44,14 +44,6 @@ bot.on("messageCreate", async msg => {
     if (msg.author.bot) {
         return;
     }
-    for (const cmd of commands) {
-        for (const name of cmd.names) {
-            if (msg.content.startsWith(botOpts.prefix + name)) {
-                cmd.execute(msg).catch(e => bot.createMessage(msg.channel.id, "Error!\n" + e));
-                return;
-            }
-        }
-    }
     if (msg.channel instanceof Eris.PrivateChannel) {
         for (const phrase in responses) {
             if (responses.hasOwnProperty(phrase)) {
@@ -123,6 +115,14 @@ bot.on("messageCreate", async msg => {
             pendingClose.ignores++;
             if (pendingClose.ignores > 2) {
                 pendingClose = undefined;
+            }
+        }
+    }
+    for (const cmd of commands) {
+        for (const name of cmd.names) {
+            if (msg.content.startsWith(botOpts.prefix + name)) {
+                cmd.execute(msg).catch(e => bot.createMessage(msg.channel.id, "Error!\n" + e));
+                return;
             }
         }
     }

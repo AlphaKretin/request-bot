@@ -42,14 +42,6 @@ bot.on("messageCreate", async (msg) => {
     if (msg.author.bot) {
         return;
     }
-    for (const cmd of commands) {
-        for (const name of cmd.names) {
-            if (msg.content.startsWith(botOpts.prefix + name)) {
-                cmd.execute(msg).catch(e => bot.createMessage(msg.channel.id, "Error!\n" + e));
-                return;
-            }
-        }
-    }
     if (msg.channel instanceof Eris.PrivateChannel) {
         for (const phrase in responses) {
             if (responses.hasOwnProperty(phrase)) {
@@ -128,6 +120,14 @@ bot.on("messageCreate", async (msg) => {
             }
         }
     }
+    for (const cmd of commands) {
+        for (const name of cmd.names) {
+            if (msg.content.startsWith(botOpts.prefix + name)) {
+                cmd.execute(msg).catch(e => bot.createMessage(msg.channel.id, "Error!\n" + e));
+                return;
+            }
+        }
+    }
 });
 bot.on("messageReactionAdd", async (msg, emoji, userID) => {
     if (userID === bot.user.id) {
@@ -175,6 +175,44 @@ function registerCommand(names, func, opts) {
     const name = typeof names === "string" ? [names] : names;
     commands.push(new Command_1.Command(name, func, undefined, opts));
 }
+registerCommand("help", async (_, args) => {
+    if (args.length === 0) {
+        let out = "**" + bot.user.username + "** - " + strings.botDescription + "\n";
+        out += "by " + strings.botOwner + "\n\n";
+        out += "**Commands**\n";
+        out += commands
+            .map(c => {
+            let profile = "  **" + botOpts.prefix + c.names[0] + "**";
+            if (c.opts && c.opts.description) {
+                profile += " - " + c.opts.description;
+            }
+            return profile;
+        })
+            .join("\n");
+        out += '\n\nType "' + botOpts.prefix + 'help [command]" for more info on a specific command';
+        return out;
+    }
+    const cmd = commands.find(c => c.names.includes(args[0].toLowerCase()));
+    if (cmd !== undefined) {
+        let out = "**" + botOpts.prefix + cmd.names[0] + "** ";
+        if (cmd.opts) {
+            if (cmd.opts.usage) {
+                out += cmd.opts.usage;
+            }
+            if (cmd.opts.fullDescription) {
+                out += "\n" + cmd.opts.fullDescription;
+            }
+            else if (cmd.opts.description) {
+                out += "\n" + cmd.opts.description;
+            }
+        }
+    }
+}, {
+    argsRequired: false,
+    description: "This help command.",
+    fullDescription: "Displays information about the bot and its commands.",
+    usage: "[command]"
+});
 registerCommand("reply", async (msg, args) => {
     const user = getUser(args[0]);
     const userID = user && user.id;

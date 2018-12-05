@@ -10,6 +10,7 @@ class Command {
         if (condition) {
             this.condition = condition;
         }
+        this.opts = opts;
     }
     async execute(msg) {
         if (this.isCanExecute(msg)) {
