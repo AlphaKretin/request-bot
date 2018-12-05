@@ -1,4 +1,5 @@
 import * as Eris from "eris";
+import { isSentByReviewer } from "./options";
 
 export interface ICommandOpts {
     argsRequired?: boolean;
@@ -45,6 +46,13 @@ export class Command {
     }
 
     private isCanExecute(msg: Eris.Message): boolean {
-        return this.condition ? this.condition(msg) : true;
+        return this.permissionCheck(msg) && (this.condition ? this.condition(msg) : true);
+    }
+
+    private permissionCheck(msg: Eris.Message): boolean {
+        if (this.names[0] === "help") {
+            return true;
+        }
+        return isSentByReviewer(msg);
     }
 }

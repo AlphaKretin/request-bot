@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const options_1 = require("./options");
 class Command {
     constructor(names, func, condition, opts) {
         if (names.length === 0) {
@@ -28,7 +29,13 @@ class Command {
         }
     }
     isCanExecute(msg) {
-        return this.condition ? this.condition(msg) : true;
+        return this.permissionCheck(msg) && (this.condition ? this.condition(msg) : true);
+    }
+    permissionCheck(msg) {
+        if (this.names[0] === "help") {
+            return true;
+        }
+        return options_1.isSentByReviewer(msg);
     }
 }
 exports.Command = Command;

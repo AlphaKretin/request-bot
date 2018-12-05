@@ -2,12 +2,8 @@ import * as Eris from "eris";
 import * as fs from "mz/fs";
 import { Case, ICaseMessage, ICaseMessagePreview } from "./Case";
 import { Command, ICommandOpts } from "./Command";
+import { auth, botOpts, isSentByReviewer, responses, strings } from "./options";
 import { ReactionButton, ReactionFunc } from "./ReactionButton";
-
-const auth = JSON.parse(fs.readFileSync("./conf/auth.json", "utf8"));
-const botOpts = JSON.parse(fs.readFileSync("./conf/opts.json", "utf8"));
-const strings = JSON.parse(fs.readFileSync("./conf/strings.json", "utf8"));
-const responses = JSON.parse(fs.readFileSync("./conf/responses.json", "utf8"));
 
 const bot = new Eris.Client(auth.token);
 const cases: {
@@ -126,6 +122,15 @@ bot.on("messageCreate", async msg => {
             }
         }
     }
+    if (msg.mentions.includes(bot.user)) {
+        for (const cmd of commands) {
+            if (cmd.names[0] === "help") {
+                cmd.execute(msg);
+                return;
+            }
+        }
+        return;
+    }
 });
 
 bot.on("messageReactionAdd", async (msg: Eris.PossiblyUncachedMessage, emoji: Eris.Emoji, userID: string) => {
@@ -184,25 +189,29 @@ function registerCommand(
 
 registerCommand(
     "help",
-    async (_, args) => {
+    async (msg, args) => {
         if (args.length === 0) {
             let out = "**" + bot.user.username + "** - " + strings.botDescription + "\n";
             out += "by " + strings.botOwner + "\n\n";
-            out += "**Commands**\n";
-            out += commands
-                .map(c => {
-                    let profile = "  **" + botOpts.prefix + c.names[0] + "**";
-                    if (c.opts && c.opts.description) {
-                        profile += " - " + c.opts.description;
-                    }
-                    return profile;
-                })
-                .join("\n");
-            out += '\n\nType "' + botOpts.prefix + 'help [command]" for more info on a specific command';
+            if (isSentByReviewer(msg)) {
+                out += "**Commands**\n";
+                out += commands
+                    .map(c => {
+                        let profile = "  **" + botOpts.prefix + c.names[0] + "**";
+                        if (c.opts && c.opts.description) {
+                            profile += " - " + c.opts.description;
+                        }
+                        return profile;
+                    })
+                    .join("\n");
+                out += '\n\nType "' + botOpts.prefix + 'help [command]" for more info on a specific command';
+            } else {
+                out += "Please message me only if you have a custom card to request.";
+            }
             return out;
         }
         const cmd = commands.find(c => c.names.includes(args[0].toLowerCase()));
-        if (cmd !== undefined) {
+        if (cmd !== undefined && isSentByReviewer(msg)) {
             let out = "**" + botOpts.prefix + cmd.names[0] + "** ";
             if (cmd.opts) {
                 if (cmd.opts.usage) {
@@ -401,7 +410,7 @@ async function addHistoryButtons(msg: Eris.Message) {
         }
     }
     if (page.index + 9 < page.hist.length) {
-        await addReactionButton(msg, "🔟", async (ms, uID) => {
+        await addReactionButton(msg, "🔟", async ms => {
             addHistoryButtons(ms);
             return detailHistoryEntry(historyPages[msg.channel.id], 9);
         });
