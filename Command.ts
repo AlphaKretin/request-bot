@@ -1,26 +1,22 @@
 import * as Eris from "eris";
 
-interface IPermissionMap {
-    [guildID: string]: {
-        [channelID: string]: string[];
-    };
+export interface ICommandOpts {
+    argsRequired?: boolean;
+    description?: string;
+    fullDescription?: string;
+    usage?: string;
 }
 
 export class Command {
+    public opts?: ICommandOpts;
     public names: string[];
     private func: (msg: Eris.Message, args: string[]) => Promise<void | Eris.MessageContent>;
     private condition?: (msg: Eris.Message) => boolean;
-    private opts?: {
-        argsRequired?: boolean;
-        description?: string;
-        fullDescription?: string;
-        usage?: string;
-    };
     constructor(
         names: string[],
         func: (msg: Eris.Message, args: string[]) => Promise<void | Eris.MessageContent>,
         condition?: (msg: Eris.Message) => boolean,
-        opts?: any
+        opts?: ICommandOpts
     ) {
         if (names.length === 0) {
             throw new Error("No names defined!");
@@ -30,6 +26,7 @@ export class Command {
         if (condition) {
             this.condition = condition;
         }
+        this.opts = opts;
     }
 
     public async execute(msg: Eris.Message): Promise<void> {

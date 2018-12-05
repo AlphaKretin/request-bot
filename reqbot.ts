@@ -1,7 +1,7 @@
 import * as Eris from "eris";
 import * as fs from "mz/fs";
 import { Case, ICaseMessage, ICaseMessagePreview } from "./Case";
-import { Command } from "./Command";
+import { Command, ICommandOpts } from "./Command";
 import { ReactionButton, ReactionFunc } from "./ReactionButton";
 
 const auth = JSON.parse(fs.readFileSync("./conf/auth.json", "utf8"));
@@ -176,11 +176,53 @@ function getUser(query: string): Eris.User | undefined {
 function registerCommand(
     names: string | string[],
     func: (msg: Eris.Message, args: string[]) => Promise<void | Eris.MessageContent>,
-    opts: any
+    opts?: ICommandOpts
 ) {
     const name = typeof names === "string" ? [names] : names;
     commands.push(new Command(name, func, undefined, opts));
 }
+
+registerCommand(
+    "help",
+    async (_, args) => {
+        if (args.length === 0) {
+            let out = "**" + bot.user.username + "** - " + strings.botDescription + "\n";
+            out += "by " + strings.botOwner + "\n\n";
+            out += "**Commands**\n";
+            out += commands
+                .map(c => {
+                    let profile = "  **" + botOpts.prefix + c.names[0] + "**";
+                    if (c.opts && c.opts.description) {
+                        profile += " - " + c.opts.description;
+                    }
+                    return profile;
+                })
+                .join("\n");
+            out += '\n\nType "' + botOpts.prefix + 'help [command]" for more info on a specific command';
+            return out;
+        }
+        const cmd = commands.find(c => c.names.includes(args[0].toLowerCase()));
+        if (cmd !== undefined) {
+            let out = "**" + botOpts.prefix + cmd.names[0] + "** ";
+            if (cmd.opts) {
+                if (cmd.opts.usage) {
+                    out += cmd.opts.usage;
+                }
+                if (cmd.opts.fullDescription) {
+                    out += "\n" + cmd.opts.fullDescription;
+                } else if (cmd.opts.description) {
+                    out += "\n" + cmd.opts.description;
+                }
+            }
+        }
+    },
+    {
+        argsRequired: false,
+        description: "This help command.",
+        fullDescription: "Displays information about the bot and its commands.",
+        usage: "[command]"
+    }
+);
 
 registerCommand(
     "reply",
