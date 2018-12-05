@@ -25,14 +25,14 @@ const cases = JSON.parse(fs.readFileSync("./data/cases.json", "utf8"), (key, val
 const reviewChannels = JSON.parse(fs.readFileSync("./data/channels.json", "utf8"));
 const commands = [];
 const reactionButtons = [];
-async function addReactionButton(msg, args, emoji, func) {
+async function addReactionButton(msg, emoji, func) {
     try {
         await msg.addReaction(emoji);
-        const button = new ReactionButton_1.ReactionButton(msg, args, emoji, func);
+        const button = new ReactionButton_1.ReactionButton(msg, emoji, func);
         reactionButtons.push(button);
     }
     catch (e) {
-        throw e;
+        console.error(e);
     }
 }
 bot.on("connect", () => {
@@ -323,43 +323,43 @@ function detailRequest(entry) {
     }
     return out;
 }
-async function addHistoryButtons(msg, args) {
+async function addHistoryButtons(msg) {
     await removeButtons(msg);
     const page = historyPages[msg.channel.id];
     if (page.index > 0) {
-        await addReactionButton(msg, args, "⬅", async (ms, as, uID) => {
+        await addReactionButton(msg, "⬅", async (ms, uID) => {
             if (ms.author.id === uID) {
                 historyPages[ms.channel.id].index -= 10;
                 if (historyPages[ms.channel.id].index < 0) {
                     historyPages[ms.channel.id].index = 0;
                 }
-                addHistoryButtons(ms, as);
+                addHistoryButtons(ms);
                 return generateHistoryPage(historyPages[ms.channel.id]);
             }
         });
     }
     if (page.index + 10 < page.hist.length) {
-        await addReactionButton(msg, args, "➡", async (ms, as, uID) => {
+        await addReactionButton(msg, "➡", async (ms, uID) => {
             if (ms.author.id === uID) {
                 const tentativeIndex = historyPages[msg.channel.id].index + 10;
                 if (tentativeIndex < historyPages[msg.channel.id].hist.length) {
                     historyPages[msg.channel.id].index = tentativeIndex;
                 }
-                addHistoryButtons(ms, as);
+                addHistoryButtons(ms);
                 return generateHistoryPage(historyPages[msg.channel.id]);
             }
         });
         for (let i = 1; i < 10; i++) {
             if (page.index + i - 1 < page.hist.length) {
-                await addReactionButton(msg, args, `${i}\u20e3`, async (ms, as, uID) => {
-                    addHistoryButtons(ms, as);
+                await addReactionButton(msg, `${i}\u20e3`, async (ms) => {
+                    addHistoryButtons(ms);
                     return detailHistoryEntry(historyPages[msg.channel.id], i - 1);
                 });
             }
         }
         if (page.index + 9 < page.hist.length) {
-            await addReactionButton(msg, args, "🔟", async (ms, as, uID) => {
-                addHistoryButtons(ms, as);
+            await addReactionButton(msg, "🔟", async (ms, uID) => {
+                addHistoryButtons(ms);
                 return detailHistoryEntry(historyPages[msg.channel.id], 9);
             });
         }
@@ -373,8 +373,9 @@ registerCommand(["hist", "history", "viewcase"], async (msg, args) => {
         return strings.noOpenCase + username + "!";
     }
     historyPages[msg.channel.id] = { index: 0, hist: cases[userID].hist, user: userID };
-    addHistoryButtons(msg, args);
-    return generateHistoryPage(historyPages[msg.channel.id]);
+    const out = generateHistoryPage(historyPages[msg.channel.id]);
+    const newM = await msg.channel.createMessage(out);
+    addHistoryButtons(newM);
 }, {
     argsRequired: true,
     description: strings.histDesc,
@@ -402,7 +403,7 @@ function getCaseList(index) {
         .map(value => {
         const user = getUser(value.userID);
         const username = user ? user.username : value.userID;
-        return username + "\t(Last message: " + value.msgAt(value.hist.length - 1).date.toUTCString() + "));";
+        return username + "\t(Last message: " + value.msgAt(value.hist.length - 1).date.toUTCString() + ");";
     })
         .slice(index, index + 9);
 }
@@ -418,39 +419,41 @@ function generateCaseList(channelID) {
     out += caseList.join("\n");
     return out;
 }
-async function addListButtons(msg, args) {
+async function addListButtons(msg) {
     await removeButtons(msg);
     const index = caseLists[msg.channel.id];
     if (index > 0) {
-        await addReactionButton(msg, args, "⬅", async (ms, as) => {
+        await addReactionButton(msg, "⬅", async (ms) => {
             caseLists[msg.channel.id] -= 10;
             if (caseLists[msg.channel.id] < 0) {
                 caseLists[msg.channel.id] = 0;
             }
-            addListButtons(ms, as);
+            addListButtons(ms);
             return generateCaseList(msg.channel.id);
         });
     }
     if (index + 10 < Object.keys(cases).length) {
-        await addReactionButton(msg, args, "➡", async (ms, as) => {
+        await addReactionButton(msg, "➡", async (ms) => {
             const tentativeIndex = caseLists[msg.channel.id] + 10;
             if (tentativeIndex < Object.keys(cases).length) {
                 caseLists[msg.channel.id] = tentativeIndex;
             }
-            addListButtons(ms, as);
+            addListButtons(ms);
             return generateCaseList(msg.channel.id);
         });
     }
 }
-registerCommand("list", (msg, args) => {
+registerCommand("list", async (msg) => {
     if (Object.keys(cases).length < 1) {
         return strings.noCases;
     }
     if (!(msg.channel.id in caseLists)) {
         caseLists[msg.channel.id] = 0;
     }
-    addListButtons(msg, args);
-    return generateCaseList(msg.channel.id);
+    addListButtons(msg);
+    const out = generateCaseList(msg.channel.id);
+    const newM = await msg.channel.createMessage(out);
+    addListButtons(newM);
 }, {
     description: strings.listDesc,
     fullDescription: strings.listDesc

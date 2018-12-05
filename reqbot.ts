@@ -503,7 +503,7 @@ async function addListButtons(msg: Eris.Message) {
 
 registerCommand(
     "list",
-    (msg, args) => {
+    async msg => {
         if (Object.keys(cases).length < 1) {
             return strings.noCases;
         }
@@ -511,7 +511,9 @@ registerCommand(
             caseLists[msg.channel.id] = 0;
         }
         addListButtons(msg);
-        return generateCaseList(msg.channel.id);
+        const out = generateCaseList(msg.channel.id);
+        const newM = await msg.channel.createMessage(out);
+        addListButtons(newM);
     },
     {
         description: strings.listDesc,
