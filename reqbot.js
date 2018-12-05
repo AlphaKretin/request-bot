@@ -3,22 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Eris = require("eris");
 const fs = require("mz/fs");
 const Case_1 = require("./Case");
+const Command_1 = require("./Command");
+const ReactionButton_1 = require("./ReactionButton");
 const auth = JSON.parse(fs.readFileSync("./conf/auth.json", "utf8"));
 const botOpts = JSON.parse(fs.readFileSync("./conf/opts.json", "utf8"));
 const strings = JSON.parse(fs.readFileSync("./conf/strings.json", "utf8"));
 const responses = JSON.parse(fs.readFileSync("./conf/responses.json", "utf8"));
-const cmdOpts = {
-    defaultCommandOptions: {
-        caseInsensitive: true,
-        requirements: {
-            roleNames: botOpts.reviewerRoles
-        }
-    },
-    description: strings.botDescription,
-    owner: strings.botOwner,
-    prefix: botOpts.prefix
-};
-const bot = new Eris.CommandClient(auth.token, undefined, cmdOpts);
+const bot = new Eris.Client(auth.token);
 const cases = JSON.parse(fs.readFileSync("./data/cases.json", "utf8"), (key, value) => {
     if (value.isCase) {
         // if marked as a case
@@ -32,12 +23,32 @@ const cases = JSON.parse(fs.readFileSync("./data/cases.json", "utf8"), (key, val
     }
 });
 const reviewChannels = JSON.parse(fs.readFileSync("./data/channels.json", "utf8"));
+const commands = [];
+const reactionButtons = [];
+async function addReactionButton(msg, args, emoji, func) {
+    try {
+        await msg.addReaction(emoji);
+        const button = new ReactionButton_1.ReactionButton(msg, args, emoji, func);
+        reactionButtons.push(button);
+    }
+    catch (e) {
+        throw e;
+    }
+}
 bot.on("connect", () => {
     console.log("Logged in!");
 });
 bot.on("messageCreate", async (msg) => {
     if (msg.author.bot) {
         return;
+    }
+    for (const cmd of commands) {
+        for (const name of cmd.names) {
+            if (msg.content.startsWith(botOpts.prefix + name)) {
+                cmd.execute(msg).catch(e => bot.createMessage(msg.channel.id, "Error!\n" + e));
+                return;
+            }
+        }
     }
     if (msg.channel instanceof Eris.PrivateChannel) {
         for (const phrase in responses) {
@@ -66,9 +77,14 @@ bot.on("messageCreate", async (msg) => {
                     "!\n" +
                     detailRequest(entry);
                 for (const channelID of reviewChannels) {
-                    const sentMsg = await bot.createMessage(channelID, revOut);
-                    if (entry.attachment !== undefined) {
-                        sentMsg.pin();
+                    try {
+                        const sentMsg = await bot.createMessage(channelID, revOut);
+                        if (entry.attachment !== undefined) {
+                            sentMsg.pin();
+                        }
+                    }
+                    catch (e) {
+                        console.dir(e);
                     }
                 }
             }
@@ -113,6 +129,31 @@ bot.on("messageCreate", async (msg) => {
         }
     }
 });
+bot.on("messageReactionAdd", async (msg, emoji, userID) => {
+    if (userID === bot.user.id) {
+        return;
+    }
+    for (const button of reactionButtons) {
+        if (button.id === msg.id && emoji.name === button.name) {
+            button.execute(userID);
+        }
+    }
+});
+async function removeButtons(msg) {
+    await msg.removeReactions();
+    let check = true;
+    while (check) {
+        check = false;
+        for (let i = 0; i < reactionButtons.length; i++) {
+            const button = reactionButtons[i];
+            if (button.id === msg.id) {
+                check = true;
+                reactionButtons.splice(i);
+                break;
+            }
+        }
+    }
+}
 function getUser(query) {
     // try for userID
     const idUser = bot.users.get(query);
@@ -130,7 +171,11 @@ function getUser(query) {
         return nameUser;
     }
 }
-bot.registerCommand("reply", async (msg, args) => {
+function registerCommand(names, func, opts) {
+    const name = typeof names === "string" ? [names] : names;
+    commands.push(new Command_1.Command(name, func, undefined, opts));
+}
+registerCommand("reply", async (msg, args) => {
     const user = getUser(args[0]);
     const userID = user && user.id;
     const response = args.slice(1).join(" ");
@@ -149,7 +194,7 @@ bot.registerCommand("reply", async (msg, args) => {
     fullDescription: strings.replyDesc,
     usage: strings.replyUsage
 });
-bot.registerCommand("clear", async (_, args) => {
+registerCommand("clear", async (_, args) => {
     const user = getUser(args[0]);
     const userID = user && user.id;
     const username = user ? user.username : "that user";
@@ -168,7 +213,7 @@ bot.registerCommand("clear", async (_, args) => {
     usage: strings.clearUsage
 });
 let pendingClose;
-bot.registerCommand("close", async (msg, args) => {
+registerCommand("close", async (msg, args) => {
     if (args[0] === "all") {
         pendingClose = {
             ids: ["all"],
@@ -240,7 +285,49 @@ function detailRequest(entry) {
     }
     return out;
 }
-bot.registerCommand("hist", (msg, args) => {
+async function addHistoryButtons(msg, args) {
+    await removeButtons(msg);
+    const page = historyPages[msg.channel.id];
+    if (page.index > 0) {
+        await addReactionButton(msg, args, "⬅", async (ms, as, uID) => {
+            if (ms.author.id === uID) {
+                historyPages[ms.channel.id].index -= 10;
+                if (historyPages[ms.channel.id].index < 0) {
+                    historyPages[ms.channel.id].index = 0;
+                }
+                addHistoryButtons(ms, as);
+                return generateHistoryPage(historyPages[ms.channel.id]);
+            }
+        });
+    }
+    if (page.index + 10 < page.hist.length) {
+        await addReactionButton(msg, args, "➡", async (ms, as, uID) => {
+            if (ms.author.id === uID) {
+                const tentativeIndex = historyPages[msg.channel.id].index + 10;
+                if (tentativeIndex < historyPages[msg.channel.id].hist.length) {
+                    historyPages[msg.channel.id].index = tentativeIndex;
+                }
+                addHistoryButtons(ms, as);
+                return generateHistoryPage(historyPages[msg.channel.id]);
+            }
+        });
+        for (let i = 1; i < 10; i++) {
+            if (page.index + i - 1 < page.hist.length) {
+                await addReactionButton(msg, args, `${i}\u20e3`, async (ms, as, uID) => {
+                    addHistoryButtons(ms, as);
+                    return detailHistoryEntry(historyPages[msg.channel.id], i - 1);
+                });
+            }
+        }
+        if (page.index + 9 < page.hist.length) {
+            await addReactionButton(msg, args, "🔟", async (ms, as, uID) => {
+                addHistoryButtons(ms, as);
+                return detailHistoryEntry(historyPages[msg.channel.id], 9);
+            });
+        }
+    }
+}
+registerCommand(["hist", "history", "viewcase"], async (msg, args) => {
     const user = getUser(args[0]);
     const userID = user && user.id;
     const username = user ? user.username : "that user";
@@ -248,89 +335,15 @@ bot.registerCommand("hist", (msg, args) => {
         return strings.noOpenCase + username + "!";
     }
     historyPages[msg.channel.id] = { index: 0, hist: cases[userID].hist, user: userID };
+    addHistoryButtons(msg, args);
     return generateHistoryPage(historyPages[msg.channel.id]);
 }, {
-    aliases: ["history", "viewcase"],
     argsRequired: true,
     description: strings.histDesc,
     fullDescription: strings.histDesc,
-    reactionButtons: [
-        {
-            emoji: "⬅",
-            response: msg => {
-                historyPages[msg.channel.id].index -= 10;
-                if (historyPages[msg.channel.id].index < 0) {
-                    historyPages[msg.channel.id].index = 0;
-                }
-                return generateHistoryPage(historyPages[msg.channel.id]);
-            },
-            type: "edit"
-        },
-        {
-            emoji: "➡",
-            response: msg => {
-                const tentativeIndex = historyPages[msg.channel.id].index + 10;
-                if (tentativeIndex < historyPages[msg.channel.id].hist.length) {
-                    historyPages[msg.channel.id].index = tentativeIndex;
-                }
-                return generateHistoryPage(historyPages[msg.channel.id]);
-            },
-            type: "edit"
-        },
-        {
-            emoji: "1\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 0),
-            type: "edit"
-        },
-        {
-            emoji: "2\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 1),
-            type: "edit"
-        },
-        {
-            emoji: "3\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 2),
-            type: "edit"
-        },
-        {
-            emoji: "4\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 3),
-            type: "edit"
-        },
-        {
-            emoji: "5\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 4),
-            type: "edit"
-        },
-        {
-            emoji: "6\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 5),
-            type: "edit"
-        },
-        {
-            emoji: "7\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 6),
-            type: "edit"
-        },
-        {
-            emoji: "8\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 7),
-            type: "edit"
-        },
-        {
-            emoji: "9\u20e3",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 8),
-            type: "edit"
-        },
-        {
-            emoji: "🔟",
-            response: msg => detailHistoryEntry(historyPages[msg.channel.id], 9),
-            type: "edit"
-        }
-    ],
     usage: strings.histUsage
 });
-bot.registerCommand("register", msg => {
+registerCommand("register", msg => {
     if (reviewChannels.includes(msg.channel.id)) {
         reviewChannels.splice(reviewChannels.indexOf(msg.channel.id));
         fs.writeFile("./data/channels.json", JSON.stringify(reviewChannels, null, 4));
@@ -367,41 +380,42 @@ function generateCaseList(channelID) {
     out += caseList.join("\n");
     return out;
 }
-bot.registerCommand("list", msg => {
+async function addListButtons(msg, args) {
+    await removeButtons(msg);
+    const index = caseLists[msg.channel.id];
+    if (index > 0) {
+        await addReactionButton(msg, args, "⬅", async (ms, as) => {
+            caseLists[msg.channel.id] -= 10;
+            if (caseLists[msg.channel.id] < 0) {
+                caseLists[msg.channel.id] = 0;
+            }
+            addListButtons(ms, as);
+            return generateCaseList(msg.channel.id);
+        });
+    }
+    if (index + 10 < Object.keys(cases).length) {
+        await addReactionButton(msg, args, "➡", async (ms, as) => {
+            const tentativeIndex = caseLists[msg.channel.id] + 10;
+            if (tentativeIndex < Object.keys(cases).length) {
+                caseLists[msg.channel.id] = tentativeIndex;
+            }
+            addListButtons(ms, as);
+            return generateCaseList(msg.channel.id);
+        });
+    }
+}
+registerCommand("list", (msg, args) => {
     if (Object.keys(cases).length < 1) {
         return strings.noCases;
     }
     if (!(msg.channel.id in caseLists)) {
         caseLists[msg.channel.id] = 0;
     }
+    addListButtons(msg, args);
     return generateCaseList(msg.channel.id);
 }, {
     description: strings.listDesc,
-    fullDescription: strings.listDesc,
-    reactionButtons: [
-        {
-            emoji: "⬅",
-            response: msg => {
-                caseLists[msg.channel.id] -= 10;
-                if (caseLists[msg.channel.id] < 0) {
-                    caseLists[msg.channel.id] = 0;
-                }
-                return generateCaseList(msg.channel.id);
-            },
-            type: "edit"
-        },
-        {
-            emoji: "➡",
-            response: msg => {
-                const tentativeIndex = caseLists[msg.channel.id] + 10;
-                if (tentativeIndex < Object.keys(cases).length) {
-                    caseLists[msg.channel.id] = tentativeIndex;
-                }
-                return generateCaseList(msg.channel.id);
-            },
-            type: "edit"
-        }
-    ]
+    fullDescription: strings.listDesc
 });
 bot.connect();
 //# sourceMappingURL=reqbot.js.map
