@@ -174,6 +174,12 @@ bot.on("channelDelete", (channel: Eris.AnyChannel) => {
     }
 });
 
+bot.on("messageDelete", (msg: Eris.PossiblyUncachedMessage) => {
+    if (reactionButtons[msg.id]) {
+        delete reactionButtons[msg.id];
+    }
+});
+
 async function removeButtons(msg: Eris.Message): Promise<void> {
     await msg.removeReactions();
     delete reactionButtons[msg.id];

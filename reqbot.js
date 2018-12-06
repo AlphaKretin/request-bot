@@ -168,6 +168,11 @@ bot.on("channelDelete", (channel) => {
         reviewChannels.splice(index);
     }
 });
+bot.on("messageDelete", (msg) => {
+    if (reactionButtons[msg.id]) {
+        delete reactionButtons[msg.id];
+    }
+});
 async function removeButtons(msg) {
     await msg.removeReactions();
     delete reactionButtons[msg.id];
