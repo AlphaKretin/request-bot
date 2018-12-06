@@ -20,7 +20,11 @@ const cases: {
 });
 const reviewChannels: string[] = JSON.parse(fs.readFileSync("./data/channels.json", "utf8"));
 const commands: Command[] = [];
-let reactionButtons: ReactionButton[] = [];
+const reactionButtons: {
+    [messageID: string]: {
+        [emoji: string]: ReactionButton;
+    };
+} = {};
 const reactionTimeouts: {
     [messageID: string]: NodeJS.Timer;
 } = {};
@@ -29,7 +33,10 @@ async function addReactionButton(msg: Eris.Message, emoji: string, func: Reactio
     try {
         await msg.addReaction(emoji);
         const button = new ReactionButton(msg, emoji, func);
-        reactionButtons.push(button);
+        if (!(msg.id in reactionButtons)) {
+            reactionButtons[msg.id] = {};
+        }
+        reactionButtons[msg.id][emoji] = button;
         if (!(msg.id in reactionTimeouts)) {
             const time = setTimeout(async () => {
                 await removeButtons(msg);
@@ -155,22 +162,14 @@ bot.on("messageReactionAdd", async (msg: Eris.PossiblyUncachedMessage, emoji: Er
     if (userID === bot.user.id) {
         return;
     }
-    for (const button of reactionButtons) {
-        if (button.id === msg.id && emoji.name === button.name) {
-            button.execute(userID);
-        }
+    if (reactionButtons[msg.id] && reactionButtons[msg.id][emoji.name]) {
+        reactionButtons[msg.id][emoji.name].execute(userID);
     }
 });
 
 async function removeButtons(msg: Eris.Message): Promise<void> {
     await msg.removeReactions();
-    const stack = [];
-    for (const button of reactionButtons) {
-        if (button.id !== msg.id) {
-            stack.push(button);
-        }
-    }
-    reactionButtons = stack;
+    delete reactionButtons[msg.id];
 }
 
 function getUser(query: string): Eris.User | undefined {

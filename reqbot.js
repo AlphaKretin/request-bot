@@ -21,13 +21,16 @@ const cases = JSON.parse(fs.readFileSync("./data/cases.json", "utf8"), (key, val
 });
 const reviewChannels = JSON.parse(fs.readFileSync("./data/channels.json", "utf8"));
 const commands = [];
-let reactionButtons = [];
+const reactionButtons = {};
 const reactionTimeouts = {};
 async function addReactionButton(msg, emoji, func) {
     try {
         await msg.addReaction(emoji);
         const button = new ReactionButton_1.ReactionButton(msg, emoji, func);
-        reactionButtons.push(button);
+        if (!(msg.id in reactionButtons)) {
+            reactionButtons[msg.id] = {};
+        }
+        reactionButtons[msg.id][emoji] = button;
         if (!(msg.id in reactionTimeouts)) {
             const time = setTimeout(async () => {
                 await removeButtons(msg);
@@ -129,13 +132,8 @@ bot.on("messageCreate", async (msg) => {
             }
         }
         else {
-            // will fire for initial message that makes the pendingClose
-            // so this originally always closed itself before you could confirm
-            //pendingClose.ignores++;
-            //if (pendingClose.ignores > 1) {
             msg.channel.createMessage(options_1.strings.cancelClose);
             pendingClose = undefined;
-            //}
         }
     }
     for (const cmd of commands) {
@@ -160,21 +158,13 @@ bot.on("messageReactionAdd", async (msg, emoji, userID) => {
     if (userID === bot.user.id) {
         return;
     }
-    for (const button of reactionButtons) {
-        if (button.id === msg.id && emoji.name === button.name) {
-            button.execute(userID);
-        }
+    if (reactionButtons[msg.id] && reactionButtons[msg.id][emoji.name]) {
+        reactionButtons[msg.id][emoji.name].execute(userID);
     }
 });
 async function removeButtons(msg) {
     await msg.removeReactions();
-    const stack = [];
-    for (const button of reactionButtons) {
-        if (button.id !== msg.id) {
-            stack.push(button);
-        }
-    }
-    reactionButtons = stack;
+    delete reactionButtons[msg.id];
 }
 function getUser(query) {
     // try for userID
