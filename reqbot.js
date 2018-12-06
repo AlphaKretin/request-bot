@@ -309,8 +309,16 @@ registerCommand("close", async (msg, args) => {
 });
 const historyPages = {};
 function generateHistoryPage(page) {
-    // don't use ceil because 0 should go to 1
-    let out = "Page " + (Math.floor(page.index / 10) + 1) + "/" + Math.ceil(page.hist.length / 10) + "\n";
+    const user = bot.users.get(page.user);
+    const name = user ? user.username + "#" + user.discriminator : "User " + page.user;
+    let out = "**Request history for " +
+        name +
+        "**\nPage " +
+        // don't use ceil because 0 should go to 1
+        (Math.floor(page.index / 10) + 1) +
+        "/" +
+        Math.ceil(page.hist.length / 10) +
+        "\n";
     for (let i = page.index; i < page.index + 10 && i < page.hist.length; i++) {
         const j = i - page.index + 1;
         const entry = page.hist[i];
