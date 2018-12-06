@@ -131,11 +131,11 @@ bot.on("messageCreate", async (msg) => {
         else {
             // will fire for initial message that makes the pendingClose
             // so this originally always closed itself before you could confirm
-            pendingClose.ignores++;
-            if (pendingClose.ignores > 2) {
-                msg.channel.createMessage(options_1.strings.cancelClose);
-                pendingClose = undefined;
-            }
+            //pendingClose.ignores++;
+            //if (pendingClose.ignores > 1) {
+            msg.channel.createMessage(options_1.strings.cancelClose);
+            pendingClose = undefined;
+            //}
         }
     }
     for (const cmd of commands) {
