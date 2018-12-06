@@ -24,4 +24,11 @@ exports.auth = JSON.parse(fs.readFileSync("./conf/auth.json", "utf8"));
 exports.botOpts = JSON.parse(fs.readFileSync("./conf/opts.json", "utf8"));
 exports.strings = JSON.parse(fs.readFileSync("./conf/strings.json", "utf8"));
 exports.responses = JSON.parse(fs.readFileSync("./conf/responses.json", "utf8"));
+exports.whitelist = JSON.parse(fs.readFileSync("./conf/whitelist.json", "utf8"));
+exports.anchorOpts = {
+    emails: false,
+    files: false,
+    ips: false,
+    list: true
+};
 //# sourceMappingURL=options.js.map

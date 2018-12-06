@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const anchorme_1 = require("anchorme");
 const Eris = require("eris");
 const fs = require("mz/fs");
 const Case_1 = require("./Case");
@@ -61,34 +62,79 @@ bot.on("messageCreate", async (msg) => {
             }
         }
         if (reviewChannels.length > 0) {
-            const userID = msg.author.id;
-            if (!(userID in cases)) {
-                cases[userID] = new Case_1.Case(userID);
-            }
-            const [result, pin] = cases[userID].log(msg, true);
-            const userOut = result ? options_1.strings.requestSuccess : options_1.strings.requestReject;
-            msg.channel.createMessage(userOut);
-            if (result) {
-                const entry = cases[userID].msgAt(cases[userID].hist.length - 1);
-                const revOut = options_1.strings.requestReceived +
-                    msg.author.username +
-                    "#" +
-                    msg.author.discriminator +
-                    "!\n" +
-                    detailRequest(entry);
-                for (const channelID of reviewChannels) {
-                    try {
-                        const sentMsg = await bot.createMessage(channelID, revOut);
-                        if (pin) {
-                            sentMsg.pin();
+            const severity = validateMessage(msg);
+            switch (severity) {
+                case messageSeverities.VALID: {
+                    const userID = msg.author.id;
+                    if (!(userID in cases)) {
+                        cases[userID] = new Case_1.Case(userID);
+                    }
+                    const [result, pin] = cases[userID].log(msg, true);
+                    const userOut = result ? options_1.strings.requestSuccess : options_1.strings.requestReject;
+                    msg.channel.createMessage(userOut);
+                    if (result) {
+                        const entry = cases[userID].msgAt(cases[userID].hist.length - 1);
+                        const revOut = options_1.strings.requestReceived +
+                            msg.author.username +
+                            "#" +
+                            msg.author.discriminator +
+                            "!\n" +
+                            detailRequest(entry);
+                        for (const channelID of reviewChannels) {
+                            try {
+                                const sentMsg = await bot.createMessage(channelID, revOut);
+                                if (pin) {
+                                    sentMsg.pin();
+                                }
+                            }
+                            catch (e) {
+                                console.dir(e);
+                            }
                         }
                     }
-                    catch (e) {
-                        console.dir(e);
+                    fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
+                    break;
+                }
+                case messageSeverities.BAD_URL: {
+                    const chan = await msg.author.getDMChannel();
+                    chan.createMessage(options_1.strings.rejectedURL);
+                    break;
+                }
+                case messageSeverities.INVITE_URL: {
+                    for (const channelID of reviewChannels) {
+                        const user = msg.author;
+                        bot.createMessage(channelID, options_1.strings.inviteWarning +
+                            "\nUser: " +
+                            user.username +
+                            "#" +
+                            user.discriminator +
+                            " ID: " +
+                            user.id +
+                            " Message: \n```" +
+                            msg.content +
+                            "```");
                     }
+                    break;
+                }
+                case messageSeverities.SENT_EXE: {
+                    for (const channelID of reviewChannels) {
+                        const user = msg.author;
+                        bot.createMessage(channelID, options_1.strings.exeWarning +
+                            "\nUser: " +
+                            user.username +
+                            "#" +
+                            user.discriminator +
+                            " ID: " +
+                            user.id +
+                            " Message:\n```" +
+                            msg.content +
+                            "```\nAttachments: `" +
+                            msg.attachments.map(a => a.filename).join("`, `") +
+                            "`");
+                    }
+                    break;
                 }
             }
-            fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
         }
         else {
             msg.channel.createMessage(options_1.strings.noChannel);
@@ -204,6 +250,38 @@ function getUser(query) {
     if (nameUser) {
         return nameUser;
     }
+}
+const escapeReg = (s) => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+// https://gist.github.com/drakantas/ec2c524b95a688b1618d7cc810d490c4
+const discordReg = /discord(?:app\.com|\.gg)[\/invite\/]?(?:(?!.*[Ii10OolL]).[a-zA-Z0-9]{5,6}|[a-zA-Z0-9\-]{2,32})/gi;
+var messageSeverities;
+(function (messageSeverities) {
+    messageSeverities[messageSeverities["VALID"] = 0] = "VALID";
+    messageSeverities[messageSeverities["BAD_URL"] = 1] = "BAD_URL";
+    messageSeverities[messageSeverities["INVITE_URL"] = 2] = "INVITE_URL";
+    messageSeverities[messageSeverities["SENT_EXE"] = 3] = "SENT_EXE";
+})(messageSeverities || (messageSeverities = {}));
+function validateMessage(msg) {
+    const urls = anchorme_1.default(msg.content, options_1.anchorOpts);
+    let severity = messageSeverities.VALID;
+    for (const att of msg.attachments) {
+        // surely there's a better way but hells if I want to download the potential virus to scan it
+        if (att.filename.endsWith(".exe")) {
+            return messageSeverities.SENT_EXE;
+        }
+    }
+    for (const url of urls) {
+        if (discordReg.test(url.domain)) {
+            severity = Math.max(severity, messageSeverities.INVITE_URL);
+        }
+        for (const domain of options_1.whitelist) {
+            const re = new RegExp(escapeReg(domain), "g");
+            if (re.test(url.domain)) {
+                severity = Math.max(severity, messageSeverities.BAD_URL);
+            }
+        }
+    }
+    return severity;
 }
 function registerCommand(names, func, opts) {
     const name = typeof names === "string" ? [names] : names;

@@ -1,12 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const anchorme_1 = require("anchorme");
-const anchorOpts = {
-    emails: false,
-    files: false,
-    ips: false,
-    list: true
-};
+const options_1 = require("./options");
 exports.pins = {};
 class Case {
     constructor(nUserID, nFile, nHistory) {
@@ -36,7 +31,7 @@ class Case {
         if (msg.attachments.length > 0) {
             return msg.attachments[0].url;
         }
-        const urls = anchorme_1.default(msg.content, anchorOpts);
+        const urls = anchorme_1.default(msg.content, options_1.anchorOpts);
         if (urls.length > 0) {
             return urls[0].raw;
         }
