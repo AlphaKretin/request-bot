@@ -93,6 +93,13 @@ bot.on("messageCreate", async msg => {
                                 const sentMsg = await bot.createMessage(channelID, revOut);
                                 if (pin) {
                                     sentMsg.pin();
+                                    if (!(msg.author.id in pins)) {
+                                        pins[msg.author.id] = {};
+                                    }
+                                    if (!(sentMsg.channel.id in pins[msg.author.id])) {
+                                        pins[msg.author.id][sentMsg.channel.id] = [];
+                                    }
+                                    pins[msg.author.id][sentMsg.channel.id].push(sentMsg.id);
                                 }
                             } catch (e) {
                                 console.dir(e);
@@ -167,6 +174,7 @@ bot.on("messageCreate", async msg => {
                 await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
                 msg.channel.createMessage(strings.deletedAll);
+                pendingClose = undefined;
             } else {
                 let idToDelete = pendingClose.ids.pop();
                 const proms: Array<Promise<void>> = [];
@@ -177,6 +185,7 @@ bot.on("messageCreate", async msg => {
                 await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
                 msg.channel.createMessage(strings.deletedCases);
+                pendingClose = undefined;
             }
         } else {
             msg.channel.createMessage(strings.cancelClose);
@@ -233,12 +242,13 @@ async function closeCase(userID: string): Promise<void> {
     }
     if (userID in pins) {
         for (const chanID of reviewChannels) {
-            for (const msgID of pins[chanID][userID]) {
+            for (const msgID of pins[userID][chanID]) {
                 const msg = await bot.getMessage(chanID, msgID);
-                if (msg) {
+                if (msg && msg.pinned) {
                     msg.unpin();
                 }
             }
+            pins[userID][chanID] = [];
         }
     }
     delete cases[userID];
@@ -397,7 +407,7 @@ registerCommand(
         if (userID in pins) {
             for (const msgID of pins[userID][msg.channel.id]) {
                 const mes = await bot.getMessage(msg.channel.id, msgID);
-                if (mes) {
+                if (mes && mes.pinned) {
                     mes.unpin();
                 }
             }
