@@ -59,19 +59,19 @@ bot.on("messageCreate", async msg => {
         return;
     }
     if (msg.channel instanceof Eris.PrivateChannel) {
-        for (const phrase in responses) {
-            if (responses.hasOwnProperty(phrase)) {
-                if (msg.content.toLowerCase().includes(phrase)) {
-                    const chan = await msg.author.getDMChannel();
-                    chan.createMessage(responses[phrase]);
-                    return;
-                }
-            }
-        }
         if (reviewChannels.length > 0) {
             const severity = validateMessage(msg);
             switch (severity) {
                 case messageSeverities.VALID: {
+                    for (const phrase in responses) {
+                        if (responses.hasOwnProperty(phrase)) {
+                            if (msg.content.toLowerCase().includes(phrase)) {
+                                const chan = await msg.author.getDMChannel();
+                                chan.createMessage(responses[phrase]);
+                                return;
+                            }
+                        }
+                    }
                     const userID = msg.author.id;
                     if (!(userID in cases)) {
                         cases[userID] = new Case(userID);
