@@ -167,6 +167,13 @@ bot.on("messageReactionAdd", async (msg: Eris.PossiblyUncachedMessage, emoji: Er
     }
 });
 
+bot.on("channelDelete", (channel: Eris.AnyChannel) => {
+    const index = reviewChannels.indexOf(channel.id);
+    if (index > -1) {
+        reviewChannels.splice(index);
+    }
+});
+
 async function removeButtons(msg: Eris.Message): Promise<void> {
     await msg.removeReactions();
     delete reactionButtons[msg.id];

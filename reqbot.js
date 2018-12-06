@@ -162,6 +162,12 @@ bot.on("messageReactionAdd", async (msg, emoji, userID) => {
         reactionButtons[msg.id][emoji.name].execute(userID);
     }
 });
+bot.on("channelDelete", (channel) => {
+    const index = reviewChannels.indexOf(channel.id);
+    if (index > -1) {
+        reviewChannels.splice(index);
+    }
+});
 async function removeButtons(msg) {
     await msg.removeReactions();
     delete reactionButtons[msg.id];
