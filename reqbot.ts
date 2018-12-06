@@ -288,14 +288,18 @@ function validateMessage(msg: Eris.Message): number {
         }
     }
     for (const url of urls) {
-        if (discordReg.test(url.domain)) {
+        if (discordReg.test(url.encoded)) {
             severity = Math.max(severity, messageSeverities.INVITE_URL);
         }
+        let safe = false;
         for (const domain of whitelist) {
-            const re = new RegExp(escapeReg(domain), "g");
-            if (re.test(url.domain)) {
-                severity = Math.max(severity, messageSeverities.BAD_URL);
+            const re = new RegExp(escapeReg(domain), "gi");
+            if (re.test(url.encoded)) {
+                safe = true;
             }
+        }
+        if (!safe) {
+            severity = Math.max(severity, messageSeverities.BAD_URL);
         }
     }
     return severity;
@@ -650,7 +654,7 @@ async function addListButtons(msg: Eris.Message) {
 }
 
 registerCommand(
-    "list",
+    ["list", "cases"],
     async msg => {
         if (Object.keys(cases).length < 1) {
             return strings.noCases;
