@@ -55,7 +55,9 @@ class Case {
                 return [false, false];
             }
             this.file = file;
-            pin = true;
+            if (file) {
+                pin = true;
+            }
         }
         const message = {
             attachment: file,

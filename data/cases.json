@@ -1,5 +1,6 @@
 {
     "169299769695535105": {
+        "file": "https://docs.google.com/document/d/1fazf4sl2PqDATwCVrDBQUeezGqh8S1QdySp8pW7_bgc/edit",
         "history": [
             {
                 "content": "sup",
@@ -27,6 +28,17 @@
             {
                 "content": "...",
                 "date": "2018-12-06T22:41:41.621Z",
+                "userSent": true
+            },
+            {
+                "content": "not a file, don't pin",
+                "date": "2018-12-06T22:46:44.305Z",
+                "userSent": true
+            },
+            {
+                "attachment": "https://docs.google.com/document/d/1fazf4sl2PqDATwCVrDBQUeezGqh8S1QdySp8pW7_bgc/edit",
+                "content": "new file, pin this pls https://docs.google.com/document/d/1fazf4sl2PqDATwCVrDBQUeezGqh8S1QdySp8pW7_bgc/edit",
+                "date": "2018-12-06T22:47:00.007Z",
                 "userSent": true
             }
         ],
