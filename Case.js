@@ -7,6 +7,7 @@ const anchorOpts = {
     ips: false,
     list: true
 };
+exports.pins = {};
 class Case {
     constructor(nUserID, nFile, nHistory) {
         this.history = [];
@@ -53,11 +54,13 @@ class Case {
     }
     log(msg, userSent, content) {
         const file = Case.getMessageFile(msg);
+        let pin = false;
         if (userSent) {
             if (file && this.file) {
-                return false;
+                return [false, false];
             }
             this.file = file;
+            pin = true;
         }
         const message = {
             attachment: file,
@@ -65,8 +68,11 @@ class Case {
             date: new Date(msg.timestamp),
             userSent
         };
+        if (this.history.length === 0) {
+            pin = true;
+        }
         this.history.push(message);
-        return true;
+        return [true, pin];
     }
     msgAt(index) {
         return this.history[index];

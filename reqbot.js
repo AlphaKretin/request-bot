@@ -65,7 +65,7 @@ bot.on("messageCreate", async (msg) => {
             if (!(userID in cases)) {
                 cases[userID] = new Case_1.Case(userID);
             }
-            const result = cases[userID].log(msg, true);
+            const [result, pin] = cases[userID].log(msg, true);
             const userOut = result ? options_1.strings.requestSuccess : options_1.strings.requestReject;
             msg.channel.createMessage(userOut);
             if (result) {
@@ -79,7 +79,7 @@ bot.on("messageCreate", async (msg) => {
                 for (const channelID of reviewChannels) {
                     try {
                         const sentMsg = await bot.createMessage(channelID, revOut);
-                        if (entry.attachment !== undefined) {
+                        if (pin) {
                             sentMsg.pin();
                         }
                     }
@@ -101,32 +101,24 @@ bot.on("messageCreate", async (msg) => {
                 msg.channel.createMessage(options_1.strings.deleteAllDoubleConfirm);
             }
             else if (pendingClose.ids[0] === "all2") {
+                const proms = [];
                 for (const userID in cases) {
                     if (cases.hasOwnProperty(userID)) {
-                        const user = bot.users.get(userID);
-                        if (user) {
-                            user.getDMChannel().then(chan => {
-                                chan.createMessage(options_1.strings.userCaseDeleted);
-                            });
-                        }
-                        delete cases[userID];
+                        proms.push(closeCase(userID));
                     }
                 }
+                await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
                 msg.channel.createMessage(options_1.strings.deletedAll);
             }
             else {
                 let idToDelete = pendingClose.ids.pop();
+                const proms = [];
                 while (idToDelete) {
-                    const user = bot.users.get(idToDelete);
-                    if (user) {
-                        user.getDMChannel().then(chan => {
-                            chan.createMessage(options_1.strings.userCaseDeleted);
-                        });
-                    }
-                    delete cases[idToDelete];
+                    proms.push(closeCase(idToDelete));
                     idToDelete = pendingClose.ids.pop();
                 }
+                await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
                 msg.channel.createMessage(options_1.strings.deletedCases);
             }
@@ -173,6 +165,25 @@ bot.on("messageDelete", (msg) => {
         delete reactionButtons[msg.id];
     }
 });
+async function closeCase(userID) {
+    const user = bot.users.get(userID);
+    if (user) {
+        user.getDMChannel().then(chan => {
+            chan.createMessage(options_1.strings.userCaseDeleted);
+        });
+    }
+    if (userID in Case_1.pins) {
+        for (const chanID of reviewChannels) {
+            for (const msgID of Case_1.pins[chanID][userID]) {
+                const msg = await bot.getMessage(chanID, msgID);
+                if (msg) {
+                    msg.unpin();
+                }
+            }
+        }
+    }
+    delete cases[userID];
+}
 async function removeButtons(msg) {
     await msg.removeReactions();
     delete reactionButtons[msg.id];
@@ -260,7 +271,7 @@ registerCommand("reply", async (msg, args) => {
     fullDescription: options_1.strings.replyDesc,
     usage: options_1.strings.replyUsage
 });
-registerCommand("clear", async (_, args) => {
+registerCommand("clear", async (msg, args) => {
     const user = getUser(args[0]);
     const userID = user && user.id;
     const username = user ? user.username : "that user";
@@ -268,6 +279,14 @@ registerCommand("clear", async (_, args) => {
         return options_1.strings.noOpenCase + username + "!";
     }
     cases[userID].clearFile();
+    if (userID in Case_1.pins) {
+        for (const msgID of Case_1.pins[userID][msg.channel.id]) {
+            const mes = await bot.getMessage(msg.channel.id, msgID);
+            if (mes) {
+                mes.unpin();
+            }
+        }
+    }
     fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
     const channel = await user.getDMChannel();
     channel.createMessage(options_1.strings.userFileCleared);
@@ -283,7 +302,6 @@ registerCommand("close", async (msg, args) => {
     if (args[0] === "all") {
         pendingClose = {
             ids: ["all"],
-            ignores: 0,
             user: msg.author.id
         };
         return options_1.strings.deleteAllConfirm;
@@ -311,7 +329,7 @@ registerCommand("close", async (msg, args) => {
         }
         if (validUsers.length > 0) {
             out += options_1.strings.deleteUserConfirmation + "\n" + validUsers.map(u => u.name).join(", ");
-            pendingClose = { user: msg.author.id, ids: validUsers.map(u => u.id), ignores: 0 };
+            pendingClose = { user: msg.author.id, ids: validUsers.map(u => u.id) };
         }
         return out;
     }

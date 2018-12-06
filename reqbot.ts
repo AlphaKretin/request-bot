@@ -1,6 +1,6 @@
 import * as Eris from "eris";
 import * as fs from "mz/fs";
-import { Case, ICaseMessage, ICaseMessagePreview } from "./Case";
+import { Case, ICaseMessage, ICaseMessagePreview, pins } from "./Case";
 import { Command, ICommandOpts } from "./Command";
 import { auth, botOpts, isSentByReviewer, responses, strings } from "./options";
 import { ReactionButton, ReactionFunc } from "./ReactionButton";
@@ -72,7 +72,7 @@ bot.on("messageCreate", async msg => {
             if (!(userID in cases)) {
                 cases[userID] = new Case(userID);
             }
-            const result = cases[userID].log(msg, true);
+            const [result, pin] = cases[userID].log(msg, true);
             const userOut: string = result ? strings.requestSuccess : strings.requestReject;
             msg.channel.createMessage(userOut);
             if (result) {
@@ -87,7 +87,7 @@ bot.on("messageCreate", async msg => {
                 for (const channelID of reviewChannels) {
                     try {
                         const sentMsg = await bot.createMessage(channelID, revOut);
-                        if (entry.attachment !== undefined) {
+                        if (pin) {
                             sentMsg.pin();
                         }
                     } catch (e) {
@@ -106,31 +106,23 @@ bot.on("messageCreate", async msg => {
                 pendingClose.ids[0] = "all2";
                 msg.channel.createMessage(strings.deleteAllDoubleConfirm);
             } else if (pendingClose.ids[0] === "all2") {
+                const proms: Array<Promise<void>> = [];
                 for (const userID in cases) {
                     if (cases.hasOwnProperty(userID)) {
-                        const user = bot.users.get(userID);
-                        if (user) {
-                            user.getDMChannel().then(chan => {
-                                chan.createMessage(strings.userCaseDeleted);
-                            });
-                        }
-                        delete cases[userID];
+                        proms.push(closeCase(userID));
                     }
                 }
+                await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
                 msg.channel.createMessage(strings.deletedAll);
             } else {
                 let idToDelete = pendingClose.ids.pop();
+                const proms: Array<Promise<void>> = [];
                 while (idToDelete) {
-                    const user = bot.users.get(idToDelete);
-                    if (user) {
-                        user.getDMChannel().then(chan => {
-                            chan.createMessage(strings.userCaseDeleted);
-                        });
-                    }
-                    delete cases[idToDelete];
+                    proms.push(closeCase(idToDelete));
                     idToDelete = pendingClose.ids.pop();
                 }
+                await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
                 msg.channel.createMessage(strings.deletedCases);
             }
@@ -179,6 +171,26 @@ bot.on("messageDelete", (msg: Eris.PossiblyUncachedMessage) => {
         delete reactionButtons[msg.id];
     }
 });
+
+async function closeCase(userID: string): Promise<void> {
+    const user = bot.users.get(userID);
+    if (user) {
+        user.getDMChannel().then(chan => {
+            chan.createMessage(strings.userCaseDeleted);
+        });
+    }
+    if (userID in pins) {
+        for (const chanID of reviewChannels) {
+            for (const msgID of pins[chanID][userID]) {
+                const msg = await bot.getMessage(chanID, msgID);
+                if (msg) {
+                    msg.unpin();
+                }
+            }
+        }
+    }
+    delete cases[userID];
+}
 
 async function removeButtons(msg: Eris.Message): Promise<void> {
     await msg.removeReactions();
@@ -284,7 +296,7 @@ registerCommand(
 
 registerCommand(
     "clear",
-    async (_, args) => {
+    async (msg, args) => {
         const user = getUser(args[0]);
         const userID = user && user.id;
         const username = user ? user.username : "that user";
@@ -292,6 +304,14 @@ registerCommand(
             return strings.noOpenCase + username + "!";
         }
         cases[userID].clearFile();
+        if (userID in pins) {
+            for (const msgID of pins[userID][msg.channel.id]) {
+                const mes = await bot.getMessage(msg.channel.id, msgID);
+                if (mes) {
+                    mes.unpin();
+                }
+            }
+        }
         fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
         const channel = await user!.getDMChannel();
         channel.createMessage(strings.userFileCleared);
@@ -305,7 +325,7 @@ registerCommand(
     }
 );
 
-let pendingClose: { user: string; ids: string[]; ignores: number } | undefined;
+let pendingClose: { user: string; ids: string[] } | undefined;
 
 interface IUserReference {
     id: string;
@@ -318,7 +338,6 @@ registerCommand(
         if (args[0] === "all") {
             pendingClose = {
                 ids: ["all"],
-                ignores: 0,
                 user: msg.author.id
             };
             return strings.deleteAllConfirm;
@@ -344,7 +363,7 @@ registerCommand(
             }
             if (validUsers.length > 0) {
                 out += strings.deleteUserConfirmation + "\n" + validUsers.map(u => u.name).join(", ");
-                pendingClose = { user: msg.author.id, ids: validUsers.map(u => u.id), ignores: 0 };
+                pendingClose = { user: msg.author.id, ids: validUsers.map(u => u.id) };
             }
             return out;
         }

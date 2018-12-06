@@ -21,6 +21,12 @@ export interface ICaseMessagePreview {
     userSent: boolean;
 }
 
+export const pins: {
+    [userID: string]: {
+        [channelID: string]: string[];
+    };
+} = {};
+
 export class Case {
     private static messageToPreview(msg: ICaseMessage): ICaseMessagePreview {
         let content: string = msg.content.slice(0, 20);
@@ -70,13 +76,15 @@ export class Case {
         return this.history.map(m => Case.messageToPreview(m));
     }
 
-    public log(msg: Eris.Message, userSent: boolean, content?: string): boolean {
+    public log(msg: Eris.Message, userSent: boolean, content?: string): boolean[] {
         const file = Case.getMessageFile(msg);
+        let pin = false;
         if (userSent) {
             if (file && this.file) {
-                return false;
+                return [false, false];
             }
             this.file = file;
+            pin = true;
         }
         const message: ICaseMessage = {
             attachment: file,
@@ -84,8 +92,11 @@ export class Case {
             date: new Date(msg.timestamp),
             userSent
         };
+        if (this.history.length === 0) {
+            pin = true;
+        }
         this.history.push(message);
-        return true;
+        return [true, pin];
     }
 
     public msgAt(index: number): ICaseMessage {
