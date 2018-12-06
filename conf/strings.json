@@ -12,6 +12,7 @@
     "replyDesc": "Send a reply to a given user's request.",
     "replyUsage": "[userID] [message]",
     "userFileCleared": "The reviewers have cleared your previously sent link or attachment! You can send another one now, if you have one.",
+    "userCaseDeleted": "The reviewers have closed your open case, likely because your request was accepted or rejected.",
     "reviewerFileCleared": "File cleared for ",
     "clearDesc": "Clears the file stored for a given user.",
     "clearUsage": "[userID]",
@@ -29,5 +30,6 @@
     "noChannel": "Sorry, the reviewers haven't specified any channels to receieve requests! You'll have to ask them to fix this.",
     "noCases": "Sorry, there are no cases open to list!",
     "caseListHeader": "There are open cases with the following users: ",
-    "listDesc": "Generates a list of all currently open cases."
+    "listDesc": "Generates a list of all currently open cases.",
+    "cancelClose": "Closing of cases cancelled!"
 }

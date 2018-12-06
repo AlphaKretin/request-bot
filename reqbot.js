@@ -100,6 +100,12 @@ bot.on("messageCreate", async (msg) => {
             else if (pendingClose.ids[0] === "all2") {
                 for (const userID in cases) {
                     if (cases.hasOwnProperty(userID)) {
+                        const user = bot.users.get(userID);
+                        if (user) {
+                            user.getDMChannel().then(chan => {
+                                chan.createMessage(options_1.strings.userCaseDeleted);
+                            });
+                        }
                         delete cases[userID];
                     }
                 }
@@ -109,6 +115,12 @@ bot.on("messageCreate", async (msg) => {
             else {
                 let idToDelete = pendingClose.ids.pop();
                 while (idToDelete) {
+                    const user = bot.users.get(idToDelete);
+                    if (user) {
+                        user.getDMChannel().then(chan => {
+                            chan.createMessage(options_1.strings.userCaseDeleted);
+                        });
+                    }
                     delete cases[idToDelete];
                     idToDelete = pendingClose.ids.pop();
                 }
@@ -121,6 +133,7 @@ bot.on("messageCreate", async (msg) => {
             // so this originally always closed itself before you could confirm
             pendingClose.ignores++;
             if (pendingClose.ignores > 2) {
+                msg.channel.createMessage(options_1.strings.cancelClose);
                 pendingClose = undefined;
             }
         }
