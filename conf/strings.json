@@ -31,5 +31,8 @@
     "noCases": "Sorry, there are no cases open to list!",
     "caseListHeader": "There are open cases with the following users: ",
     "listDesc": "Generates a list of all currently open cases.",
-    "cancelClose": "Closing of cases cancelled!"
+    "cancelClose": "Closing of cases cancelled!",
+    "rejectedURL": "Sorry, it looks like your request has a URL in it, and for security reasons I only let certain URLs through. If it's a legitimate source for your request, contact the reviewers directly.",
+    "inviteWarning": "**Spam bot warning**! The following user sent the following message, which includes a Discord invite! They should probably be banned and reported.",
+    "exeWarning": "**Urgent scam warming**! The following user sent the following message, along with an EXE file! This is most likely a virus and they need to be dealt with ASAP."
 }

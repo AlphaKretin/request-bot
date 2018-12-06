@@ -1,12 +1,6 @@
 import anchorme from "anchorme";
 import * as Eris from "eris";
-
-const anchorOpts = {
-    emails: false,
-    files: false,
-    ips: false,
-    list: true
-};
+import { anchorOpts } from "./options";
 
 export interface ICaseMessage {
     attachment?: string;

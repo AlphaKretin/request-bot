@@ -23,3 +23,10 @@ export const auth = JSON.parse(fs.readFileSync("./conf/auth.json", "utf8"));
 export const botOpts = JSON.parse(fs.readFileSync("./conf/opts.json", "utf8"));
 export const strings = JSON.parse(fs.readFileSync("./conf/strings.json", "utf8"));
 export const responses = JSON.parse(fs.readFileSync("./conf/responses.json", "utf8"));
+export const whitelist = JSON.parse(fs.readFileSync("./conf/whitelist.json", "utf8"));
+export const anchorOpts = {
+    emails: false,
+    files: false,
+    ips: false,
+    list: true
+};

@@ -1,8 +1,9 @@
+import anchorme from "anchorme";
 import * as Eris from "eris";
 import * as fs from "mz/fs";
 import { Case, ICaseMessage, ICaseMessagePreview, pins } from "./Case";
 import { Command, ICommandOpts } from "./Command";
-import { auth, botOpts, isSentByReviewer, responses, strings } from "./options";
+import { anchorOpts, auth, botOpts, isSentByReviewer, responses, strings, whitelist } from "./options";
 import { ReactionButton, ReactionFunc } from "./ReactionButton";
 
 const bot = new Eris.Client(auth.token);
@@ -68,34 +69,85 @@ bot.on("messageCreate", async msg => {
             }
         }
         if (reviewChannels.length > 0) {
-            const userID = msg.author.id;
-            if (!(userID in cases)) {
-                cases[userID] = new Case(userID);
-            }
-            const [result, pin] = cases[userID].log(msg, true);
-            const userOut: string = result ? strings.requestSuccess : strings.requestReject;
-            msg.channel.createMessage(userOut);
-            if (result) {
-                const entry = cases[userID].msgAt(cases[userID].hist.length - 1);
-                const revOut =
-                    strings.requestReceived +
-                    msg.author.username +
-                    "#" +
-                    msg.author.discriminator +
-                    "!\n" +
-                    detailRequest(entry);
-                for (const channelID of reviewChannels) {
-                    try {
-                        const sentMsg = await bot.createMessage(channelID, revOut);
-                        if (pin) {
-                            sentMsg.pin();
-                        }
-                    } catch (e) {
-                        console.dir(e);
+            const severity = validateMessage(msg);
+            switch (severity) {
+                case messageSeverities.VALID: {
+                    const userID = msg.author.id;
+                    if (!(userID in cases)) {
+                        cases[userID] = new Case(userID);
                     }
+                    const [result, pin] = cases[userID].log(msg, true);
+                    const userOut: string = result ? strings.requestSuccess : strings.requestReject;
+                    msg.channel.createMessage(userOut);
+                    if (result) {
+                        const entry = cases[userID].msgAt(cases[userID].hist.length - 1);
+                        const revOut =
+                            strings.requestReceived +
+                            msg.author.username +
+                            "#" +
+                            msg.author.discriminator +
+                            "!\n" +
+                            detailRequest(entry);
+                        for (const channelID of reviewChannels) {
+                            try {
+                                const sentMsg = await bot.createMessage(channelID, revOut);
+                                if (pin) {
+                                    sentMsg.pin();
+                                }
+                            } catch (e) {
+                                console.dir(e);
+                            }
+                        }
+                    }
+                    fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
+                    break;
+                }
+                case messageSeverities.BAD_URL: {
+                    const chan = await msg.author.getDMChannel();
+                    chan.createMessage(strings.rejectedURL);
+                    break;
+                }
+                case messageSeverities.INVITE_URL: {
+                    for (const channelID of reviewChannels) {
+                        const user = msg.author;
+                        bot.createMessage(
+                            channelID,
+                            strings.inviteWarning +
+                                "\nUser: " +
+                                user.username +
+                                "#" +
+                                user.discriminator +
+                                " ID: " +
+                                user.id +
+                                " Message: \n```" +
+                                msg.content +
+                                "```"
+                        );
+                    }
+                    break;
+                }
+                case messageSeverities.SENT_EXE: {
+                    for (const channelID of reviewChannels) {
+                        const user = msg.author;
+                        bot.createMessage(
+                            channelID,
+                            strings.exeWarning +
+                                "\nUser: " +
+                                user.username +
+                                "#" +
+                                user.discriminator +
+                                " ID: " +
+                                user.id +
+                                " Message:\n```" +
+                                msg.content +
+                                "```\nAttachments: `" +
+                                msg.attachments.map(a => a.filename).join("`, `") +
+                                "`"
+                        );
+                    }
+                    break;
                 }
             }
-            fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
         } else {
             msg.channel.createMessage(strings.noChannel);
         }
@@ -213,6 +265,40 @@ function getUser(query: string): Eris.User | undefined {
     if (nameUser) {
         return nameUser;
     }
+}
+
+const escapeReg = (s: string) => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+// https://gist.github.com/drakantas/ec2c524b95a688b1618d7cc810d490c4
+const discordReg = /discord(?:app\.com|\.gg)[\/invite\/]?(?:(?!.*[Ii10OolL]).[a-zA-Z0-9]{5,6}|[a-zA-Z0-9\-]{2,32})/gi;
+
+enum messageSeverities {
+    VALID = 0,
+    BAD_URL = 1,
+    INVITE_URL = 2,
+    SENT_EXE = 3
+}
+
+function validateMessage(msg: Eris.Message): number {
+    const urls = anchorme(msg.content, anchorOpts);
+    let severity = messageSeverities.VALID;
+    for (const att of msg.attachments) {
+        // surely there's a better way but hells if I want to download the potential virus to scan it
+        if (att.filename.endsWith(".exe")) {
+            return messageSeverities.SENT_EXE;
+        }
+    }
+    for (const url of urls) {
+        if (discordReg.test(url.domain)) {
+            severity = Math.max(severity, messageSeverities.INVITE_URL);
+        }
+        for (const domain of whitelist) {
+            const re = new RegExp(escapeReg(domain), "g");
+            if (re.test(url.domain)) {
+                severity = Math.max(severity, messageSeverities.BAD_URL);
+            }
+        }
+    }
+    return severity;
 }
 
 function registerCommand(
