@@ -535,4 +535,24 @@ registerCommand(
     }
 );
 
+function getChannelByID(id: string): Eris.Channel | undefined {
+    for (const guild of bot.guilds) {
+        const chan = guild[1].channels.get(id);
+        if (chan) {
+            return chan;
+        }
+    }
+}
+
+registerCommand("chan", async msg => {
+    const channels = reviewChannels.map(id => {
+        const chan = getChannelByID(id);
+        if (chan && chan instanceof Eris.TextChannel) {
+            return chan.guild.name + "#" + chan.name + " (" + id + ")";
+        }
+        return id;
+    });
+    return "**List of registered channels**:\n" + channels.join("\n");
+});
+
 bot.connect();
