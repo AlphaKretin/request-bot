@@ -154,6 +154,7 @@ bot.on("messageCreate", async (msg) => {
                 msg.channel.createMessage(options_1.strings.deleteAllDoubleConfirm);
             }
             else if (pendingClose.ids[0] === "all2") {
+                pendingClose = undefined;
                 const proms = [];
                 for (const userID in cases) {
                     if (cases.hasOwnProperty(userID)) {
@@ -163,7 +164,6 @@ bot.on("messageCreate", async (msg) => {
                 await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
                 msg.channel.createMessage(options_1.strings.deletedAll);
-                pendingClose = undefined;
             }
             else {
                 let idToDelete = pendingClose.ids.pop();
@@ -172,10 +172,10 @@ bot.on("messageCreate", async (msg) => {
                     proms.push(closeCase(idToDelete));
                     idToDelete = pendingClose.ids.pop();
                 }
+                pendingClose = undefined;
                 await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
                 msg.channel.createMessage(options_1.strings.deletedCases);
-                pendingClose = undefined;
             }
         }
         else {
