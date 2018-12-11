@@ -692,15 +692,22 @@ function getChannelByID(id: string): Eris.Channel | undefined {
     }
 }
 
-registerCommand("chan", async msg => {
-    const channels = reviewChannels.map(id => {
-        const chan = getChannelByID(id);
-        if (chan && chan instanceof Eris.TextChannel) {
-            return chan.guild.name + "#" + chan.name + " (" + id + ")";
-        }
-        return id;
-    });
-    return "**List of registered channels**:\n" + channels.join("\n");
-});
+registerCommand(
+    "chan",
+    async msg => {
+        const channels = reviewChannels.map(id => {
+            const chan = getChannelByID(id);
+            if (chan && chan instanceof Eris.TextChannel) {
+                return chan.guild.name + "#" + chan.name + " (" + id + ")";
+            }
+            return id;
+        });
+        return "**List of registered channels**:\n" + channels.join("\n");
+    },
+    {
+        description: strings.chanDesc,
+        fullDescription: strings.chanDesc
+    }
+);
 
 bot.connect();

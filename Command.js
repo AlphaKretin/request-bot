@@ -17,22 +17,21 @@ class Command {
         if (this.isCanExecute(msg)) {
             const args = msg.content.split(/\s/).slice(1);
             if (args.length === 0 && this.opts && this.opts.argsRequired !== undefined && this.opts.argsRequired) {
-                return;
+                return false;
             }
             const res = await this.func(msg, args);
             if (res !== undefined) {
-                msg.channel.createMessage(res);
+                await msg.channel.createMessage(res);
+                return true;
             }
         }
-        else {
-            throw new Error("Forbidden");
-        }
+        return false;
     }
     isCanExecute(msg) {
         return this.permissionCheck(msg) && (this.condition ? this.condition(msg) : true);
     }
     permissionCheck(msg) {
-        if (this.names[0] === "help") {
+        if (this.names[0] === "help" || msg.author.id === options_1.botOpts.ownerID) {
             return true;
         }
         return options_1.isSentByReviewer(msg);

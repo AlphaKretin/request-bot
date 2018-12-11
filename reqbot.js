@@ -621,6 +621,9 @@ registerCommand("chan", async (msg) => {
         return id;
     });
     return "**List of registered channels**:\n" + channels.join("\n");
+}, {
+    description: options_1.strings.chanDesc,
+    fullDescription: options_1.strings.chanDesc
 });
 bot.connect();
 //# sourceMappingURL=reqbot.js.map
