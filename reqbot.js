@@ -150,6 +150,7 @@ bot.on("messageCreate", async (msg) => {
     }
     if (pendingClose && pendingClose.user === msg.author.id) {
         if (msg.content === "yes") {
+            let msgs = [];
             if (pendingClose.ids[0] === "all") {
                 pendingClose.ids[0] = "all2";
                 msg.channel.createMessage(options_1.strings.deleteAllDoubleConfirm);
@@ -159,24 +160,44 @@ bot.on("messageCreate", async (msg) => {
                 const proms = [];
                 for (const userID in cases) {
                     if (cases.hasOwnProperty(userID)) {
-                        proms.push(closeCase(userID));
+                        proms.push(closeCase(userID).then(ms => {
+                            if (ms) {
+                                msgs = msgs.concat(ms);
+                            }
+                        }));
                     }
                 }
                 await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
-                msg.channel.createMessage(options_1.strings.deletedAll);
+                let out = options_1.strings.deletedAll;
+                if (msgs.length > 0) {
+                    out += "\nUnpinned messages:\n";
+                    const links = msgs.map(getJumpLink);
+                    out += links.join("\n");
+                }
+                msg.channel.createMessage(out);
             }
             else {
                 let idToDelete = pendingClose.ids.pop();
                 const proms = [];
                 while (idToDelete) {
-                    proms.push(closeCase(idToDelete));
+                    proms.push(closeCase(idToDelete).then(ms => {
+                        if (ms) {
+                            msgs = msgs.concat(ms);
+                        }
+                    }));
                     idToDelete = pendingClose.ids.pop();
                 }
                 pendingClose = undefined;
                 await Promise.all(proms);
                 fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
-                msg.channel.createMessage(options_1.strings.deletedCases);
+                let out = options_1.strings.deletedCases;
+                if (msgs.length > 0) {
+                    out += "\nUnpinned messages:\n";
+                    const links = msgs.map(getJumpLink);
+                    out += links.join("\n");
+                }
+                msg.channel.createMessage(out);
             }
         }
         else {
@@ -228,11 +249,13 @@ async function closeCase(userID) {
             chan.createMessage(options_1.strings.userCaseDeleted);
         });
     }
+    const msgs = [];
     if (userID in Case_1.pins) {
         for (const chanID of reviewChannels) {
             for (const msgID of Case_1.pins[userID][chanID]) {
                 const msg = await bot.getMessage(chanID, msgID);
                 if (msg && msg.pinned) {
+                    msgs.push(msg);
                     msg.unpin();
                 }
             }
@@ -240,6 +263,9 @@ async function closeCase(userID) {
         }
     }
     delete cases[userID];
+    if (msgs.length > 0) {
+        return msgs;
+    }
 }
 async function removeButtons(msg) {
     await msg.removeReactions();
@@ -372,17 +398,25 @@ registerCommand("clear", async (msg, args) => {
         return options_1.strings.noOpenCase + username + "!";
     }
     cases[userID].clearFile();
+    const msgs = [];
     if (userID in Case_1.pins) {
         for (const msgID of Case_1.pins[userID][msg.channel.id]) {
             const mes = await bot.getMessage(msg.channel.id, msgID);
             if (mes && mes.pinned) {
                 mes.unpin();
+                msgs.push(mes);
             }
         }
     }
     fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
     const channel = await user.getDMChannel();
-    channel.createMessage(options_1.strings.userFileCleared);
+    let out = options_1.strings.userFileCleared;
+    if (msgs.length > 0) {
+        out += "\nUnpinned messages:\n";
+        const links = msgs.map(getJumpLink);
+        out += links.join("\n");
+    }
+    channel.createMessage(out);
     return options_1.strings.reviewerFileCleared + username + "!";
 }, {
     argsRequired: true,
@@ -627,4 +661,10 @@ registerCommand("chan", async (msg) => {
     fullDescription: options_1.strings.chanDesc
 });
 bot.connect();
+const getJumpLink = (m) => "https://discordapp.com/channels/" +
+    (m instanceof Eris.GuildChannel ? m.guild.id : "@me") +
+    "/" +
+    m.channel.id +
+    "/" +
+    m.id;
 //# sourceMappingURL=reqbot.js.map
