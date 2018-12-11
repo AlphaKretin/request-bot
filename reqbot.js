@@ -662,7 +662,7 @@ registerCommand("chan", async (msg) => {
 });
 bot.connect();
 const getJumpLink = (m) => "<https://discordapp.com/channels/" +
-    (m instanceof Eris.GuildChannel ? m.guild.id : "@me") +
+    (m.channel instanceof Eris.GuildChannel ? m.channel.guild.id : "@me") +
     "/" +
     m.channel.id +
     "/" +

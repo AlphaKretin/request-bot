@@ -722,7 +722,7 @@ registerCommand(
     }
 );
 
-function getChannelByID(id: string): Eris.Channel | undefined {
+function getChannelByID(id: string): Eris.AnyGuildChannel | undefined {
     for (const guild of bot.guilds) {
         const chan = guild[1].channels.get(id);
         if (chan) {
@@ -753,7 +753,7 @@ bot.connect();
 
 const getJumpLink = (m: Eris.Message) =>
     "<https://discordapp.com/channels/" +
-    (m instanceof Eris.GuildChannel ? m.guild.id : "@me") +
+    (m.channel instanceof Eris.GuildChannel ? m.channel.guild.id : "@me") +
     "/" +
     m.channel.id +
     "/" +
