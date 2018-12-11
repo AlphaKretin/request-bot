@@ -56,9 +56,10 @@ bot.on("messageCreate", async (msg) => {
             const severity = validateMessage(msg);
             switch (severity) {
                 case messageSeverities.VALID: {
+                    const content = msg.content.replace("`", "");
                     for (const phrase in options_1.responses) {
                         if (options_1.responses.hasOwnProperty(phrase)) {
-                            if (msg.content.toLowerCase().includes(phrase)) {
+                            if (content.toLowerCase().includes(phrase)) {
                                 const chan = await msg.author.getDMChannel();
                                 chan.createMessage(options_1.responses[phrase]);
                                 return;
