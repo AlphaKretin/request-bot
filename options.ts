@@ -2,6 +2,9 @@ import * as Eris from "eris";
 import * as fs from "mz/fs";
 
 export function isSentByReviewer(msg: Eris.Message) {
+    if (msg.author.id === botOpts.ownerID) {
+        return true;
+    }
     const user = msg.member;
     if (user) {
         const roleIDs = user.roles;

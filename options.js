@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const Eris = require("eris");
 const fs = require("mz/fs");
 function isSentByReviewer(msg) {
+    if (msg.author.id === exports.botOpts.ownerID) {
+        return true;
+    }
     const user = msg.member;
     if (user) {
         const roleIDs = user.roles;

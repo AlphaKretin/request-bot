@@ -1,5 +1,5 @@
 import * as Eris from "eris";
-import { botOpts, isSentByReviewer } from "./options";
+import { isSentByReviewer } from "./options";
 
 export interface ICommandOpts {
     argsRequired?: boolean;
@@ -50,7 +50,7 @@ export class Command {
     }
 
     private permissionCheck(msg: Eris.Message): boolean {
-        if (this.names[0] === "help" || msg.author.id === botOpts.ownerID) {
+        if (this.names[0] === "help") {
             return true;
         }
         return isSentByReviewer(msg);

@@ -31,7 +31,7 @@ class Command {
         return this.permissionCheck(msg) && (this.condition ? this.condition(msg) : true);
     }
     permissionCheck(msg) {
-        if (this.names[0] === "help" || msg.author.id === options_1.botOpts.ownerID) {
+        if (this.names[0] === "help") {
             return true;
         }
         return options_1.isSentByReviewer(msg);
