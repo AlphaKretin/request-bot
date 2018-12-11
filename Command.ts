@@ -1,5 +1,5 @@
 import * as Eris from "eris";
-import { isSentByReviewer } from "./options";
+import { botOpts, isSentByReviewer } from "./options";
 
 export interface ICommandOpts {
     argsRequired?: boolean;
@@ -30,19 +30,19 @@ export class Command {
         this.opts = opts;
     }
 
-    public async execute(msg: Eris.Message): Promise<void> {
+    public async execute(msg: Eris.Message): Promise<boolean> {
         if (this.isCanExecute(msg)) {
             const args = msg.content.split(/\s/).slice(1);
             if (args.length === 0 && this.opts && this.opts.argsRequired !== undefined && this.opts.argsRequired) {
-                return;
+                return false;
             }
             const res = await this.func(msg, args);
             if (res !== undefined) {
-                msg.channel.createMessage(res);
+                await msg.channel.createMessage(res);
+                return true;
             }
-        } else {
-            throw new Error("Forbidden");
         }
+        return false;
     }
 
     private isCanExecute(msg: Eris.Message): boolean {
@@ -50,7 +50,7 @@ export class Command {
     }
 
     private permissionCheck(msg: Eris.Message): boolean {
-        if (this.names[0] === "help") {
+        if (this.names[0] === "help" || msg.author.id === botOpts.ownerID) {
             return true;
         }
         return isSentByReviewer(msg);
