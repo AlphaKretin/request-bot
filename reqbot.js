@@ -661,10 +661,11 @@ registerCommand("chan", async (msg) => {
     fullDescription: options_1.strings.chanDesc
 });
 bot.connect();
-const getJumpLink = (m) => "https://discordapp.com/channels/" +
+const getJumpLink = (m) => "<https://discordapp.com/channels/" +
     (m instanceof Eris.GuildChannel ? m.guild.id : "@me") +
     "/" +
     m.channel.id +
     "/" +
-    m.id;
+    m.id +
+    ">";
 //# sourceMappingURL=reqbot.js.map
