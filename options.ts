@@ -27,6 +27,6 @@ export const whitelist = JSON.parse(fs.readFileSync("./conf/whitelist.json", "ut
 export const anchorOpts = {
     emails: false,
     files: false,
-    ips: false,
+    ips: true,
     list: true
 };

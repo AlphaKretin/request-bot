@@ -28,7 +28,7 @@ exports.whitelist = JSON.parse(fs.readFileSync("./conf/whitelist.json", "utf8"))
 exports.anchorOpts = {
     emails: false,
     files: false,
-    ips: false,
+    ips: true,
     list: true
 };
 //# sourceMappingURL=options.js.map
