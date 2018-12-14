@@ -63,7 +63,7 @@ bot.on("messageCreate", async msg => {
             const severity = validateMessage(msg);
             switch (severity) {
                 case messageSeverities.VALID: {
-                    const content = msg.content.replace("`", "");
+                    const content = msg.content.replace(/`/g, "");
                     for (const phrase in responses) {
                         if (responses.hasOwnProperty(phrase)) {
                             if (content.toLowerCase().includes(phrase)) {
