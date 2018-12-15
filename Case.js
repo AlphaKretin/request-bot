@@ -4,7 +4,7 @@ const anchorme_1 = require("anchorme");
 const options_1 = require("./options");
 exports.pins = {};
 class Case {
-    constructor(nUserID, nFile, nHistory) {
+    constructor(nUserID, nFile, nHistory, nIDs) {
         this.history = [];
         this.userID = nUserID;
         // if being restored from JSON
@@ -13,6 +13,10 @@ class Case {
         }
         if (nHistory) {
             this.history = nHistory;
+        }
+        this.ids = {};
+        if (nIDs) {
+            this.ids = nIDs;
         }
     }
     static messageToPreview(msg) {
@@ -40,6 +44,7 @@ class Case {
         return {
             file: this.file,
             history: this.history,
+            ids: this.ids,
             isCase: true,
             userID: this.userID
         };

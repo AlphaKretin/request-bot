@@ -15,12 +15,6 @@ export interface ICaseMessagePreview {
     userSent: boolean;
 }
 
-export const pins: {
-    [userID: string]: {
-        [channelID: string]: string[];
-    };
-} = {};
-
 export class Case {
     private static messageToPreview(msg: ICaseMessage): ICaseMessagePreview {
         let content: string = msg.content.slice(0, 20);
@@ -43,10 +37,11 @@ export class Case {
             return urls[0].raw;
         }
     }
+    public ids: { [messageID: string]: string };
     public userID: string;
     public file?: string;
     private history: ICaseMessage[] = [];
-    constructor(nUserID: string, nFile?: string, nHistory?: ICaseMessage[]) {
+    constructor(nUserID: string, nFile?: string, nHistory?: ICaseMessage[], nIDs?: { [messageID: string]: string }) {
         this.userID = nUserID;
         // if being restored from JSON
         if (nFile) {
@@ -55,12 +50,17 @@ export class Case {
         if (nHistory) {
             this.history = nHistory;
         }
+        this.ids = {};
+        if (nIDs) {
+            this.ids = nIDs;
+        }
     }
 
     public toJSON() {
         return {
             file: this.file,
             history: this.history,
+            ids: this.ids,
             isCase: true, // flag for deserialisation
             userID: this.userID
         };
@@ -70,7 +70,7 @@ export class Case {
         return this.history.map(m => Case.messageToPreview(m));
     }
 
-    public log(msg: Eris.Message, userSent: boolean, content?: string): boolean[] {
+    public log(msg: Eris.Message, userSent: boolean, content?: string): [boolean, boolean] {
         const file = Case.getMessageFile(msg);
         let pin = false;
         if (userSent) {

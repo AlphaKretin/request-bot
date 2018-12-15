@@ -1,7 +1,7 @@
 import anchorme from "anchorme";
 import * as Eris from "eris";
 import * as fs from "mz/fs";
-import { Case, ICaseMessage, ICaseMessagePreview, pins } from "./Case";
+import { Case, ICaseMessage, ICaseMessagePreview } from "./Case";
 import { Command, ICommandOpts } from "./Command";
 import { anchorOpts, auth, botOpts, isSentByReviewer, responses, strings, whitelist } from "./options";
 import { ReactionButton, ReactionFunc } from "./ReactionButton";
@@ -12,7 +12,7 @@ const cases: {
 } = JSON.parse(fs.readFileSync("./data/cases.json", "utf8"), (key, value) => {
     if (value.isCase) {
         // if marked as a case
-        return new Case(value.userID, value.file, value.history);
+        return new Case(value.userID, value.file, value.history, value.ids);
     } else if (key === "date") {
         return new Date(value);
     } else {
@@ -92,15 +92,9 @@ bot.on("messageCreate", async msg => {
                         for (const channelID of reviewChannels) {
                             try {
                                 const sentMsg = await bot.createMessage(channelID, revOut);
+                                cases[userID].ids[sentMsg.id] = sentMsg.channel.id;
                                 if (pin) {
                                     sentMsg.pin();
-                                    if (!(msg.author.id in pins)) {
-                                        pins[msg.author.id] = {};
-                                    }
-                                    if (!(sentMsg.channel.id in pins[msg.author.id])) {
-                                        pins[msg.author.id][sentMsg.channel.id] = [];
-                                    }
-                                    pins[msg.author.id][sentMsg.channel.id].push(sentMsg.id);
                                 }
                             } catch (e) {
                                 console.dir(e);
@@ -267,18 +261,17 @@ async function closeCase(userID: string): Promise<Eris.Message[] | undefined> {
         });
     }
     const msgs = [];
-    if (userID in pins) {
-        for (const chanID of reviewChannels) {
-            for (const msgID of pins[userID][chanID]) {
-                const msg = await bot.getMessage(chanID, msgID);
-                if (msg && msg.pinned) {
-                    msgs.push(msg);
-                    msg.unpin();
-                }
+
+    for (const msgID in cases[userID].ids) {
+        if (cases[userID].ids.hasOwnProperty(msgID)) {
+            const msg = await bot.getMessage(cases[userID].ids[msgID], msgID);
+            if (msg && msg.pinned) {
+                msgs.push(msg);
+                msg.unpin();
             }
-            pins[userID][chanID] = [];
         }
     }
+
     delete cases[userID];
     if (msgs.length > 0) {
         return msgs;
@@ -436,8 +429,9 @@ registerCommand(
         }
         cases[userID].clearFile();
         const msgs = [];
-        if (userID in pins) {
-            for (const msgID of pins[userID][msg.channel.id]) {
+
+        for (const msgID in cases[userID].ids) {
+            if (cases[userID].ids.hasOwnProperty(msgID)) {
                 const mes = await bot.getMessage(msg.channel.id, msgID);
                 if (mes && mes.pinned) {
                     mes.unpin();
@@ -445,16 +439,17 @@ registerCommand(
                 }
             }
         }
+
         fs.writeFile("./data/cases.json", JSON.stringify(cases, null, 4));
         const channel = await user!.getDMChannel();
-        let out = strings.userFileCleared;
+        let out = "";
         if (msgs.length > 0) {
             out += "\nUnpinned messages:\n";
             const links = msgs.map(getJumpLink);
             out += links.join("\n");
         }
-        channel.createMessage(out);
-        return strings.reviewerFileCleared + username + "!";
+        channel.createMessage(strings.userFileCleared);
+        return strings.reviewerFileCleared + username + "!\n" + out;
     },
     {
         argsRequired: true,
