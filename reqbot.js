@@ -134,7 +134,7 @@ bot.on("messageCreate", async (msg) => {
                             user.discriminator +
                             " ID: " +
                             user.id +
-                            " Message:\n```" +
+                            " Message:\n```\n" +
                             msg.content +
                             "```\nAttachments: `" +
                             msg.attachments.map(a => a.filename).join("`, `") +
