@@ -10,6 +10,21 @@
                 "content": "Test first\nNow code block",
                 "date": "2018-12-15T05:10:30.832Z",
                 "userSent": true
+            },
+            {
+                "content": "one tick",
+                "date": "2018-12-15T05:28:52.513Z",
+                "userSent": true
+            },
+            {
+                "content": "two ticks",
+                "date": "2018-12-15T05:28:54.753Z",
+                "userSent": true
+            },
+            {
+                "content": "three ticks",
+                "date": "2018-12-15T05:29:01.376Z",
+                "userSent": true
             }
         ],
         "isCase": true,

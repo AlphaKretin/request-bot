@@ -54,9 +54,9 @@ bot.on("messageCreate", async (msg) => {
     if (msg.channel instanceof Eris.PrivateChannel) {
         if (reviewChannels.length > 0) {
             const severity = validateMessage(msg);
+            const content = msg.content.replace(/`/g, "");
             switch (severity) {
                 case messageSeverities.VALID: {
-                    const content = msg.content.replace(/`/g, "");
                     for (const phrase in options_1.responses) {
                         if (options_1.responses.hasOwnProperty(phrase)) {
                             if (content.toLowerCase().includes(phrase)) {
@@ -119,7 +119,7 @@ bot.on("messageCreate", async (msg) => {
                             " ID: " +
                             user.id +
                             " Message: \n```" +
-                            msg.content +
+                            content +
                             "```");
                     }
                     break;
@@ -135,7 +135,7 @@ bot.on("messageCreate", async (msg) => {
                             " ID: " +
                             user.id +
                             " Message:\n```\n" +
-                            msg.content +
+                            content +
                             "```\nAttachments: `" +
                             msg.attachments.map(a => a.filename).join("`, `") +
                             "`");
