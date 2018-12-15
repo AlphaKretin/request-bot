@@ -212,6 +212,41 @@ bot.on("messageCreate", async msg => {
             pendingClose = undefined;
         }
     }
+    if (pendingPurge && pendingPurge.user === msg.author.id) {
+        if (msg.content === "yes") {
+            if (pendingPurge.ids[0] === "all") {
+                pendingPurge.ids[0] = "all2";
+                msg.channel.createMessage(strings.purgeAllDoubleConfirm);
+            } else if (pendingPurge.ids[0] === "all2") {
+                pendingPurge = undefined;
+                const ids = [];
+                for (const id in cases) {
+                    if (cases.hasOwnProperty(id)) {
+                        const is = Object.keys(cases[id].ids).filter(i => cases[id].ids[i] === msg.channel.id);
+                        ids.push(...is);
+                    }
+                }
+                await bot.deleteMessages(msg.channel.id, ids);
+                msg.channel.createMessage(strings.caseMessagesDeleted);
+            } else {
+                let idToDelete = pendingPurge.ids.pop();
+                const ids = [];
+                while (idToDelete) {
+                    const is = Object.keys(cases[idToDelete].ids).filter(
+                        i => cases[idToDelete!].ids[i] === msg.channel.id
+                    );
+                    ids.push(...is);
+                    idToDelete = pendingPurge.ids.pop();
+                }
+                pendingPurge = undefined;
+                await bot.deleteMessages(msg.channel.id, ids);
+                msg.channel.createMessage(strings.caseMessagesDeleted);
+            }
+        } else {
+            msg.channel.createMessage(strings.cancelPurge);
+            pendingPurge = undefined;
+        }
+    }
     for (const cmd of commands) {
         for (const name of cmd.names) {
             if (msg.content.startsWith(botOpts.prefix + name)) {
@@ -264,7 +299,7 @@ async function closeCase(userID: string): Promise<Eris.Message[] | undefined> {
 
     for (const msgID in cases[userID].ids) {
         if (cases[userID].ids.hasOwnProperty(msgID)) {
-            const msg = await bot.getMessage(cases[userID].ids[msgID], msgID);
+            const msg = await getMessage(cases[userID].ids[msgID], msgID);
             if (msg && msg.pinned) {
                 msgs.push(msg);
                 msg.unpin();
@@ -279,8 +314,10 @@ async function closeCase(userID: string): Promise<Eris.Message[] | undefined> {
 }
 
 async function removeButtons(msg: Eris.Message): Promise<void> {
-    await msg.removeReactions();
-    delete reactionButtons[msg.id];
+    if (msg) {
+        await msg.removeReactions();
+        delete reactionButtons[msg.id];
+    }
 }
 
 function getUser(query: string): Eris.User | undefined {
@@ -432,7 +469,7 @@ registerCommand(
 
         for (const msgID in cases[userID].ids) {
             if (cases[userID].ids.hasOwnProperty(msgID)) {
-                const mes = await bot.getMessage(msg.channel.id, msgID);
+                const mes = await getMessage(msg.channel.id, msgID);
                 if (mes && mes.pinned) {
                     mes.unpin();
                     msgs.push(mes);
@@ -460,6 +497,7 @@ registerCommand(
 );
 
 let pendingClose: { user: string; ids: string[] } | undefined;
+let pendingPurge: { user: string; ids: string[] } | undefined;
 
 interface IUserReference {
     id: string;
@@ -601,7 +639,7 @@ async function addHistoryButtons(msg: Eris.Message) {
 }
 
 registerCommand(
-    ["hist", "history", "viewcase"],
+    ["hist", "viewcase"],
     async (msg, args) => {
         const user = getUser(args[0]);
         const userID = user && user.id;
@@ -612,6 +650,7 @@ registerCommand(
         historyPages[msg.channel.id] = { index: 0, hist: cases[userID].hist, user: userID };
         const out = generateHistoryPage(historyPages[msg.channel.id]);
         const newM = await msg.channel.createMessage(out);
+        cases[userID].ids[newM.id] = msg.channel.id;
         addHistoryButtons(newM);
     },
     {
@@ -740,6 +779,50 @@ registerCommand(
     }
 );
 
+registerCommand(
+    ["purge", "prune", "del"],
+    async (msg, args) => {
+        if (args[0] === "all") {
+            pendingPurge = {
+                ids: ["all"],
+                user: msg.author.id
+            };
+            return strings.purgeAllConfirm;
+        } else {
+            const validUsers: IUserReference[] = [];
+            const invalidUsers: string[] = [];
+            for (const query of args) {
+                const user = getUser(query);
+                const userID = user && user.id;
+                if (userID && userID in cases) {
+                    const reference: IUserReference = {
+                        id: userID,
+                        name: user!.username
+                    };
+                    validUsers.push(reference);
+                } else {
+                    invalidUsers.push(query);
+                }
+            }
+            let out: string = "";
+            if (invalidUsers.length > 0) {
+                out += strings.purgeInvalidUsers + "\n" + invalidUsers.join(", ");
+            }
+            if (validUsers.length > 0) {
+                out += strings.purgeUserConfirmation + "\n" + validUsers.map(u => u.name).join(", ");
+                pendingPurge = { user: msg.author.id, ids: validUsers.map(u => u.id) };
+            }
+            return out;
+        }
+    },
+    {
+        argsRequired: true,
+        description: strings.purgeDesc,
+        fullDescription: strings.purgeDesc,
+        usage: strings.purgeUsage
+    }
+);
+
 bot.connect();
 
 const getJumpLink = (m: Eris.Message) =>
@@ -750,3 +833,11 @@ const getJumpLink = (m: Eris.Message) =>
     "/" +
     m.id +
     ">";
+
+async function getMessage(chanID: string, msgID: string): Promise<Eris.Message | undefined> {
+    try {
+        return await bot.getMessage(chanID, msgID);
+    } catch {
+        return undefined;
+    }
+}

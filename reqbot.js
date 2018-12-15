@@ -199,6 +199,42 @@ bot.on("messageCreate", async (msg) => {
             pendingClose = undefined;
         }
     }
+    if (pendingPurge && pendingPurge.user === msg.author.id) {
+        if (msg.content === "yes") {
+            if (pendingPurge.ids[0] === "all") {
+                pendingPurge.ids[0] = "all2";
+                msg.channel.createMessage(options_1.strings.purgeAllDoubleConfirm);
+            }
+            else if (pendingPurge.ids[0] === "all2") {
+                pendingPurge = undefined;
+                const ids = [];
+                for (const id in cases) {
+                    if (cases.hasOwnProperty(id)) {
+                        const is = Object.keys(cases[id].ids).filter(i => cases[id].ids[i] === msg.channel.id);
+                        ids.push(...is);
+                    }
+                }
+                await bot.deleteMessages(msg.channel.id, ids);
+                msg.channel.createMessage(options_1.strings.caseMessagesDeleted);
+            }
+            else {
+                let idToDelete = pendingPurge.ids.pop();
+                const ids = [];
+                while (idToDelete) {
+                    const is = Object.keys(cases[idToDelete].ids).filter(i => cases[idToDelete].ids[i] === msg.channel.id);
+                    ids.push(...is);
+                    idToDelete = pendingPurge.ids.pop();
+                }
+                pendingPurge = undefined;
+                await bot.deleteMessages(msg.channel.id, ids);
+                msg.channel.createMessage(options_1.strings.caseMessagesDeleted);
+            }
+        }
+        else {
+            msg.channel.createMessage(options_1.strings.cancelPurge);
+            pendingPurge = undefined;
+        }
+    }
     for (const cmd of commands) {
         for (const name of cmd.names) {
             if (msg.content.startsWith(options_1.botOpts.prefix + name)) {
@@ -246,7 +282,7 @@ async function closeCase(userID) {
     const msgs = [];
     for (const msgID in cases[userID].ids) {
         if (cases[userID].ids.hasOwnProperty(msgID)) {
-            const msg = await bot.getMessage(cases[userID].ids[msgID], msgID);
+            const msg = await getMessage(cases[userID].ids[msgID], msgID);
             if (msg && msg.pinned) {
                 msgs.push(msg);
                 msg.unpin();
@@ -259,8 +295,10 @@ async function closeCase(userID) {
     }
 }
 async function removeButtons(msg) {
-    await msg.removeReactions();
-    delete reactionButtons[msg.id];
+    if (msg) {
+        await msg.removeReactions();
+        delete reactionButtons[msg.id];
+    }
 }
 function getUser(query) {
     // try for userID
@@ -392,7 +430,7 @@ registerCommand("clear", async (msg, args) => {
     const msgs = [];
     for (const msgID in cases[userID].ids) {
         if (cases[userID].ids.hasOwnProperty(msgID)) {
-            const mes = await bot.getMessage(msg.channel.id, msgID);
+            const mes = await getMessage(msg.channel.id, msgID);
             if (mes && mes.pinned) {
                 mes.unpin();
                 msgs.push(mes);
@@ -416,6 +454,7 @@ registerCommand("clear", async (msg, args) => {
     usage: options_1.strings.clearUsage
 });
 let pendingClose;
+let pendingPurge;
 registerCommand("close", async (msg, args) => {
     if (args[0] === "all") {
         pendingClose = {
@@ -533,7 +572,7 @@ async function addHistoryButtons(msg) {
         });
     }
 }
-registerCommand(["hist", "history", "viewcase"], async (msg, args) => {
+registerCommand(["hist", "viewcase"], async (msg, args) => {
     const user = getUser(args[0]);
     const userID = user && user.id;
     const username = user ? user.username : "that user";
@@ -543,6 +582,7 @@ registerCommand(["hist", "history", "viewcase"], async (msg, args) => {
     historyPages[msg.channel.id] = { index: 0, hist: cases[userID].hist, user: userID };
     const out = generateHistoryPage(historyPages[msg.channel.id]);
     const newM = await msg.channel.createMessage(out);
+    cases[userID].ids[newM.id] = msg.channel.id;
     addHistoryButtons(newM);
 }, {
     argsRequired: true,
@@ -647,6 +687,47 @@ registerCommand("chan", async (msg) => {
     description: options_1.strings.chanDesc,
     fullDescription: options_1.strings.chanDesc
 });
+registerCommand(["purge", "prune", "del"], async (msg, args) => {
+    if (args[0] === "all") {
+        pendingPurge = {
+            ids: ["all"],
+            user: msg.author.id
+        };
+        return options_1.strings.purgeAllConfirm;
+    }
+    else {
+        const validUsers = [];
+        const invalidUsers = [];
+        for (const query of args) {
+            const user = getUser(query);
+            const userID = user && user.id;
+            if (userID && userID in cases) {
+                const reference = {
+                    id: userID,
+                    name: user.username
+                };
+                validUsers.push(reference);
+            }
+            else {
+                invalidUsers.push(query);
+            }
+        }
+        let out = "";
+        if (invalidUsers.length > 0) {
+            out += options_1.strings.purgeInvalidUsers + "\n" + invalidUsers.join(", ");
+        }
+        if (validUsers.length > 0) {
+            out += options_1.strings.purgeUserConfirmation + "\n" + validUsers.map(u => u.name).join(", ");
+            pendingPurge = { user: msg.author.id, ids: validUsers.map(u => u.id) };
+        }
+        return out;
+    }
+}, {
+    argsRequired: true,
+    description: options_1.strings.purgeDesc,
+    fullDescription: options_1.strings.purgeDesc,
+    usage: options_1.strings.purgeUsage
+});
 bot.connect();
 const getJumpLink = (m) => "<https://discordapp.com/channels/" +
     (m.channel instanceof Eris.GuildChannel ? m.channel.guild.id : "@me") +
@@ -655,4 +736,12 @@ const getJumpLink = (m) => "<https://discordapp.com/channels/" +
     "/" +
     m.id +
     ">";
+async function getMessage(chanID, msgID) {
+    try {
+        return await bot.getMessage(chanID, msgID);
+    }
+    catch (_a) {
+        return undefined;
+    }
+}
 //# sourceMappingURL=reqbot.js.map

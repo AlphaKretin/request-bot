@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const anchorme_1 = require("anchorme");
 const options_1 = require("./options");
-exports.pins = {};
 class Case {
     constructor(nUserID, nFile, nHistory, nIDs) {
         this.history = [];
