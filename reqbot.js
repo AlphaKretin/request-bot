@@ -509,26 +509,22 @@ async function addHistoryButtons(msg) {
     const page = historyPages[msg.channel.id];
     if (page.index > 0) {
         await addReactionButton(msg, "⬅", async (ms, uID) => {
-            if (ms.author.id === uID) {
-                historyPages[ms.channel.id].index -= 10;
-                if (historyPages[ms.channel.id].index < 0) {
-                    historyPages[ms.channel.id].index = 0;
-                }
-                addHistoryButtons(ms);
-                return generateHistoryPage(historyPages[ms.channel.id]);
+            historyPages[ms.channel.id].index -= 10;
+            if (historyPages[ms.channel.id].index < 0) {
+                historyPages[ms.channel.id].index = 0;
             }
+            addHistoryButtons(ms);
+            return generateHistoryPage(historyPages[ms.channel.id]);
         });
     }
     if (page.index + 10 < page.hist.length) {
         await addReactionButton(msg, "➡", async (ms, uID) => {
-            if (ms.author.id === uID) {
-                const tentativeIndex = historyPages[msg.channel.id].index + 10;
-                if (tentativeIndex < historyPages[msg.channel.id].hist.length) {
-                    historyPages[msg.channel.id].index = tentativeIndex;
-                }
-                addHistoryButtons(ms);
-                return generateHistoryPage(historyPages[msg.channel.id]);
+            const tentativeIndex = historyPages[msg.channel.id].index + 10;
+            if (tentativeIndex < historyPages[msg.channel.id].hist.length) {
+                historyPages[msg.channel.id].index = tentativeIndex;
             }
+            addHistoryButtons(ms);
+            return generateHistoryPage(historyPages[msg.channel.id]);
         });
     }
     for (let i = 1; i < 10; i++) {
