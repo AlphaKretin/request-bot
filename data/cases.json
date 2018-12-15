@@ -1,1 +1,18 @@
-{}
+{
+    "169299769695535105": {
+        "history": [
+            {
+                "content": "Test first\n```Now code block```",
+                "date": "2018-12-15T05:08:09.854Z",
+                "userSent": true
+            },
+            {
+                "content": "Test first\nNow code block",
+                "date": "2018-12-15T05:10:30.832Z",
+                "userSent": true
+            }
+        ],
+        "isCase": true,
+        "userID": "169299769695535105"
+    }
+}

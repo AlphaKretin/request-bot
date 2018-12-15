@@ -70,7 +70,7 @@ bot.on("messageCreate", async (msg) => {
                     if (!(userID in cases)) {
                         cases[userID] = new Case_1.Case(userID);
                     }
-                    const [result, pin] = cases[userID].log(msg, true);
+                    const [result, pin] = cases[userID].log(msg, true, content);
                     const userOut = result ? options_1.strings.requestSuccess : options_1.strings.requestReject;
                     msg.channel.createMessage(userOut);
                     if (result) {
