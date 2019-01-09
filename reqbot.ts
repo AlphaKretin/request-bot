@@ -599,11 +599,15 @@ function detailRequest(entry: ICaseMessage): string {
     return out;
 }
 
+let reactionID = 0;
+
 async function addHistoryButtons(msg: Eris.Message) {
+    const initialID = reactionID;
     await removeButtons(msg);
     const page = historyPages[msg.channel.id];
-    if (page.index > 0) {
+    if (page.index > 0 && initialID === reactionID) {
         await addReactionButton(msg, "⬅", async (ms, uID) => {
+            reactionID++;
             historyPages[ms.channel.id].index -= 10;
             if (historyPages[ms.channel.id].index < 0) {
                 historyPages[ms.channel.id].index = 0;
@@ -612,8 +616,9 @@ async function addHistoryButtons(msg: Eris.Message) {
             return generateHistoryPage(historyPages[ms.channel.id]);
         });
     }
-    if (page.index + 10 < page.hist.length) {
+    if (page.index + 10 < page.hist.length && initialID === reactionID) {
         await addReactionButton(msg, "➡", async (ms, uID) => {
+            reactionID++;
             const tentativeIndex = historyPages[msg.channel.id].index + 10;
             if (tentativeIndex < historyPages[msg.channel.id].hist.length) {
                 historyPages[msg.channel.id].index = tentativeIndex;
@@ -623,15 +628,17 @@ async function addHistoryButtons(msg: Eris.Message) {
         });
     }
     for (let i = 1; i < 10; i++) {
-        if (page.index + i - 1 < page.hist.length) {
+        if (page.index + i - 1 < page.hist.length && initialID === reactionID) {
             await addReactionButton(msg, `${i}\u20e3`, async ms => {
+                reactionID++;
                 addHistoryButtons(ms);
                 return detailHistoryEntry(historyPages[msg.channel.id], i - 1);
             });
         }
     }
-    if (page.index + 9 < page.hist.length) {
+    if (page.index + 9 < page.hist.length && initialID === reactionID) {
         await addReactionButton(msg, "🔟", async ms => {
+            reactionID++;
             addHistoryButtons(ms);
             return detailHistoryEntry(historyPages[msg.channel.id], 9);
         });
